@@ -1,4 +1,3 @@
-cognitive_model_collection
-==========================
+# Collection of cognitive models
 
-Collection of my implementations of computational models of cognition
+This is a little collection of my implementations of computational models of cognition in R.
