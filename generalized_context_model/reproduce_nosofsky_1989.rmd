@@ -1,8 +1,16 @@
-# Reproduction of model-based analyses by Nosofsky (1989)
-To validate this implementation of the Generalized Context Model, I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. [Note on data](data/README.html)).
+---
+title: "Reproduction of model-based analyses by Nosofsky (1989)"
+author: "Frederik Aust"
+date: "19.12.2014"
+output:
+  html_document:
+    theme: spacelab
+    toc: yes
+---
 
-```{r echo = FALSE}
-rm(list = ls())
+To validate this implementation of the Generalized Context Model (GCM), I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. [note on data](data/README.html)).
+
+```{r}
 source("gcm_pred.r")
 source("gcm_fit.r")
 ```
@@ -17,7 +25,9 @@ data$n_size <- rowSums(data[, 1:2])
 data$n_angle <- rowSums(data[, 3:4])
 ```
 
-### Unconstrained GCM fits for the size condition
+<br />
+
+# Unconstrained GCM fits for the size condition
 The original parameter estimates reported in Table 5 by Nosofsky (1989) are $w_1 = .10$, $c = 1.60$, and $b_1 = .50$.
 
 ```{r}
@@ -38,7 +48,9 @@ size_fit$par
 size_pred <- gcm_pred(size_fit$par, mem[, 1:3], obs, rho = 2)
 ```
 
-### Unconstrained GCM fits for the angle condition
+<br />
+
+# Unconstrained GCM fits for the angle condition
 The original parameter estimates reported in Table 5 by Nosofsky (1989) are $w_1 = .98$, $c = 3.20$, and $b_1 = .43$.
 
 ```{r}
@@ -58,6 +70,9 @@ angle_fit$par
 angle_pred <- gcm_pred(angle_fit$par, mem[, c(1:2, 4)], obs, rho = 2)
 ```
 
+<br />
+
+# Predictions
 The resulting fits allow for a close partial reproduction of Nosofsky's Figure 6 (1989) plotting observed against predicted proportions of category 1 responses for each stimulus.
 
 ```{r echo = FALSE}
@@ -86,6 +101,7 @@ legend(
 )
 ```
 
+<br />
 
-## References
+# References
 Nosofsky, R. M. (1989). Further tests of an exemplar-similarity approach to relating identification and categorization. *Perception & Psychophysics*, 45(4), 279–290. doi: [10.3758/BF03204942](http://dx.doi.org/10.3758/BF03204942)
