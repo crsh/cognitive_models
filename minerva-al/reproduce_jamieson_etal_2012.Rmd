@@ -1,0 +1,105 @@
+---
+title: "Untitled"
+author: "Frederik Aust"
+date: "5. Januar 2015"
+output: html_document
+---
+
+```{r}
+source("minerva-al_learn.R")
+```
+
+# Simulation
+General setup of simulations
+```{r simulation_setup}
+n_features <- 120
+a <- b <- c <- d <- context <- x <- rep(0, n_features)
+
+# Cues
+a[1:20] <- 1
+b[21:40] <- 1
+c[41:60] <- 1
+d[61:80] <- 1
+cues <- rbind(a, b, c, d)
+
+context[81:100] <- 1
+
+# Outcome
+x[101:120] <- 1
+```
+
+## Section 1: Acquisition
+```{r execute_simulation}
+n_replications <- 1
+n_trials <- 200
+
+p_encode <- c(0.33, 0.67, 1)
+probe <- cues["a", ] + context
+outcome <- x + context
+probe_outcome <- cues["a", ] + x + context
+
+sim_results <- matrix(0, ncol = 200, nrow = 3)
+
+for (r in 1:n_replications) {
+  for(i in 1:3) {
+    # First trial hits empty memory
+    expectancy <- calc_expectancy(outcome, probe, NULL)
+    
+    memory <- learn(
+      memory = NULL
+      , event = probe_outcome
+      , p_encode = p_encode[i]
+    )
+    
+    for(j in 2:(n_trials / 2)) { # Acquisition trials
+      expectancy <- c(expectancy, calc_expectancy(outcome, probe, memory))
+      memory <- learn(
+        memory = memory
+        , event = probe_outcome
+        , p_encode = p_encode[i]
+      )
+    }
+    
+    for(j in ((n_trials / 2) + 1):n_trials) { # Extinction trials
+      expectancy <- c(expectancy, calc_expectancy(outcome, probe, memory))
+      memory <- learn(
+        memory = memory
+        , event = probe
+        , p_encode = p_encode[i]
+      )
+    }
+    
+    sim_results[i, ] <- sim_results[i, ] + expectancy
+  }
+}
+
+sim_results <- sim_results / n_replications # Mean of replications
+```
+
+```{r plot_results, fig.height = 5.5, fig.width = 9.5}
+plot(
+  1:n_trials, sim_results[1, ]
+  , ylim = c(0, 1)
+  , type = "l"
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+points(1:n_trials, sim_results[1, ], pch = 17, col = "white")
+points(1:n_trials, sim_results[1, ], pch = 2)
+
+lines(1:n_trials, sim_results[2, ], lwd = 2.5)
+points(1:n_trials, sim_results[2, ], pch = 15, col = "white")
+points(1:n_trials, sim_results[2, ], pch = 0)
+
+lines(1:n_trials, sim_results[3, ], lwd = 2.5)
+points(1:n_trials, sim_results[3, ], pch = 16, col = "white")
+points(1:n_trials, sim_results[3, ])
+```
+
+
+
+# References
+
+Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](http://dx.doi.org/10.3758/s13420-011-0046-2)
