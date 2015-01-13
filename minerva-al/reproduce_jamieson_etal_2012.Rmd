@@ -1,11 +1,22 @@
-# Reproduction of Simulation 1 by Jamieson, Crump & Hannah (2012)
+---
+title: "Reproduction of Simulation 1 by Jamieson, Crump & Hannah (2012)"
+author: "Frederik Aust"
+date: "13.1.2015"
+output:
+  html_document:
+    theme: spacelab
+    toc: yes
+---
+
 To validate this implementation of Minerva-AL, I reproduced a simulation study reported in Jamieson, Crump & Hannah (2012).
 
 ```{r echo = FALSE}
 source("minerva-al.R")
 ```
 
-### Simulation of acquisition and extinction (Section 1)
+<br />
+
+# Simulation of acquisition and extinction (Section 1)
 I created cue, outcome and context vectors and defined the number of trials and replications according to the specifications in the paper.
 
 ```{r setup_events}
@@ -74,7 +85,11 @@ for (r in 1:n_replications) {
 sim_results <- sim_results / n_replications # Mean of replications
 ```
 
-The resulting expectancies correspond nicely to those reported by Jamieson, Hannah & Crump (2012) in Figure 1. 
+<br />
+
+# Results
+The resulting expectancies correspond nicely to those reported by Jamieson, Hannah & Crump (2012) in Figure 1.
+
 ```{r plot_results, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
 plot(
   1:n_trials, sim_results[1, ]
@@ -140,6 +155,7 @@ for(i in 102:120) {
 }
 ```
 
+<br />
 
 # References
 Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](http://dx.doi.org/10.3758/s13420-011-0046-2)
