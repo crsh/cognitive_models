@@ -2,7 +2,6 @@
 To validate this implementation of the Generalized Context Model, I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. [Note on data](data/README.html)).
 
 ```{r echo = FALSE}
-rm(list = ls())
 source("gcm_pred.r")
 source("gcm_fit.r")
 ```

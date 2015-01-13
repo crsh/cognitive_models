@@ -1,71 +1,69 @@
----
-title: "Untitled"
-author: "Frederik Aust"
-date: "5. Januar 2015"
-output: html_document
----
+# Reproduction of Simulation 1 by Jamieson, Crump & Hannah (2012)
+To validate this implementation of Minerva-AL, I reproduced a simulation study reported in Jamieson, Crump & Hannah (2012).
 
-```{r}
-source("minerva-al_learn.R")
+```{r echo = FALSE}
+source("minerva-al.R")
 ```
 
-# Simulation
-General setup of simulations
-```{r simulation_setup}
+### Simulation of acquisition and extinction (Section 1)
+I created cue, outcome and context vectors and defined the number of trials and replications according to the specifications in the paper.
+
+```{r setup_events}
 n_features <- 120
-a <- b <- c <- d <- context <- x <- rep(0, n_features)
+cue_features <- 1:100
+a <- context <- outcome <- rep(0, n_features)
 
-# Cues
 a[1:20] <- 1
-b[21:40] <- 1
-c[41:60] <- 1
-d[61:80] <- 1
-cues <- rbind(a, b, c, d)
-
+outcome[101:120] <- 1
 context[81:100] <- 1
 
-# Outcome
-x[101:120] <- 1
+acquisition_event <- a + context + outcome
+extinction_event <- probe <- a + context
 ```
 
-## Section 1: Acquisition
-```{r execute_simulation}
-n_replications <- 1
+```{r setup_simulation}
+n_replications <- 25
 n_trials <- 200
 
 p_encode <- c(0.33, 0.67, 1)
-probe <- cues["a", ] + context
-outcome <- x + context
-probe_outcome <- cues["a", ] + x + context
+```
 
-sim_results <- matrix(0, ncol = 200, nrow = 3)
+```{r execute_simulation}
+sim_results <- matrix(0, ncol = n_trials, nrow = length(p_encode))
 
 for (r in 1:n_replications) {
   for(i in 1:3) {
-    # First trial hits empty memory
-    expectancy <- calc_expectancy(outcome, probe, NULL)
-    
+    # Memory is empty on first trial
+    normalized_echo <- calc_echo(probe, NULL, cue_features)
+    expectancy <- calc_expectancy(outcome, normalized_echo)
     memory <- learn(
-      memory = NULL
-      , event = probe_outcome
-      , p_encode = p_encode[i]
+      normalized_echo
+      , acquisition_event
+      , p_encode[i]
+      , NULL
     )
     
-    for(j in 2:(n_trials / 2)) { # Acquisition trials
-      expectancy <- c(expectancy, calc_expectancy(outcome, probe, memory))
+     # Acquisition trials
+    for(j in 2:(n_trials / 2)) {
+      normalized_echo <- calc_echo(probe, memory, cue_features)
+      expectancy <- c(expectancy, calc_expectancy(outcome, normalized_echo))
       memory <- learn(
-        memory = memory
-        , event = probe_outcome
-        , p_encode = p_encode[i]
+        normalized_echo
+        , acquisition_event
+        , p_encode[i]
+        , memory
       )
     }
     
-    for(j in ((n_trials / 2) + 1):n_trials) { # Extinction trials
-      expectancy <- c(expectancy, calc_expectancy(outcome, probe, memory))
+    # Extinction trials
+    for(j in ((n_trials / 2) + 1):n_trials) {
+      normalized_echo <- calc_echo(probe, memory, cue_features)
+      expectancy <- c(expectancy, calc_expectancy(outcome, normalized_echo))
       memory <- learn(
-        memory = memory
-        , event = probe
-        , p_encode = p_encode[i]
+        normalized_echo
+        , extinction_event
+        , p_encode[i]
+        , memory
       )
     }
     
@@ -76,7 +74,8 @@ for (r in 1:n_replications) {
 sim_results <- sim_results / n_replications # Mean of replications
 ```
 
-```{r plot_results, fig.height = 5.5, fig.width = 9.5}
+The resulting expectancies correspond nicely to those reported by Jamieson, Hannah & Crump (2012) in Figure 1. 
+```{r plot_results, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
 plot(
   1:n_trials, sim_results[1, ]
   , ylim = c(0, 1)
@@ -86,20 +85,61 @@ plot(
   , ylab = "Retrieval of X given A"
   , las = 1
 )
-points(1:n_trials, sim_results[1, ], pch = 17, col = "white")
-points(1:n_trials, sim_results[1, ], pch = 2)
+points(1:n_trials, sim_results[1, ], pch = 17, cex = 1.25, col = "white")
+points(1:n_trials, sim_results[1, ], pch = 2, cex = 1.25)
 
 lines(1:n_trials, sim_results[2, ], lwd = 2.5)
-points(1:n_trials, sim_results[2, ], pch = 15, col = "white")
-points(1:n_trials, sim_results[2, ], pch = 0)
+points(1:n_trials, sim_results[2, ], pch = 15, cex = 1.25, col = "white")
+points(1:n_trials, sim_results[2, ], pch = 0, cex = 1.25)
 
 lines(1:n_trials, sim_results[3, ], lwd = 2.5)
-points(1:n_trials, sim_results[3, ], pch = 16, col = "white")
-points(1:n_trials, sim_results[3, ])
+points(1:n_trials, sim_results[3, ], pch = 16, cex = 1.25, col = "white")
+points(1:n_trials, sim_results[3, ], cex = 1.25)
+```
+
+Additionally, the following plots visualize the information encoded for cue and outcome features across acquisition and extinction trials. The data are taken from one of the `r n_replications` simulations with encoding probability $L = 1$.
+
+```{r plot_encoding, echo = FALSE}
+plot(
+  1:200
+  , memory[, 1]
+  , type = "l"
+  , col = scales::alpha("black", 0.3)
+  , ylim = c(-2, 2)
+  , xlab = "Trial"
+  , ylab = "Feature encoding"
+  , main = "Features of cue A"
+  , las = 1
+)
+for(i in 2:20) {
+  lines(
+    1:200
+    , memory[, i]
+    , col = scales::alpha("black", 0.3)
+  )
+}
+
+
+plot(
+  1:200
+  , memory[, 101]
+  , type = "l"
+  , col = scales::alpha("black", 0.3)
+  , ylim = c(-2, 2)
+  , xlab = "Trial"
+  , ylab = "Feature encoding"
+  , main = "Features of outcome X"
+  , las = 1
+)
+for(i in 102:120) {
+  lines(
+    1:200
+    , memory[, i]
+    , col = scales::alpha("black", 0.3)
+  )
+}
 ```
 
 
-
 # References
-
 Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](http://dx.doi.org/10.3758/s13420-011-0046-2)
