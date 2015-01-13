@@ -1,3 +1,9 @@
+# R files
 .Rproj.user
 .Rhistory
 .RData
+
+# System files
+*~
+.DS_Store
+Thumbs.db

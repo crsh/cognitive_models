@@ -10,7 +10,7 @@ output:
 
 To validate this implementation of the Generalized Context Model (GCM), I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. [note on data](data/README.html)).
 
-```{r}
+```{r echo = FALSE}
 source("gcm_pred.r")
 source("gcm_fit.r")
 ```
