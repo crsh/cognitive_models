@@ -38,6 +38,7 @@ size_fit <- optim(
   , mem = mem[, 1:3]
   , obs = obs
   , rho = 2
+  , p = 2
   , data = data[, c(1, 2, 5)]
   , fn = gcm_fit
   , method = "Nelder-Mead"
@@ -45,7 +46,7 @@ size_fit <- optim(
 
 size_fit$par
 
-size_pred <- gcm_pred(size_fit$par, mem[, 1:3], obs, rho = 2)
+size_pred <- gcm_pred(size_fit$par, mem[, 1:3], obs, rho = 2, p = 2)
 ```
 
 <br />
@@ -60,6 +61,7 @@ angle_fit <- optim(
   , mem = mem[, c(1:2, 4)]
   , obs = obs
   , rho = 2
+  , p = 2
   , data = data[, c(3, 4, 6)]
   , fn = gcm_fit
   , method = "Nelder-Mead"
@@ -67,7 +69,7 @@ angle_fit <- optim(
 
 angle_fit$par
 
-angle_pred <- gcm_pred(angle_fit$par, mem[, c(1:2, 4)], obs, rho = 2)
+angle_pred <- gcm_pred(angle_fit$par, mem[, c(1:2, 4)], obs, rho = 2, p = 2)
 ```
 
 <br />

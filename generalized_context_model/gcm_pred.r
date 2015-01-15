@@ -1,5 +1,5 @@
 # param  A vector of starting parameters: c(w1, c, b)
-#             w = Attentional weight for dimension 1 of the psychological similarity space (assuming two dimensions)
+#             w1 = Attentional weight for dimension 1 of the psychological similarity space (assuming two dimensions)
 #             c = Similarity sensitivity
 #             b = Bias towards category 1
 # mem   A matrix of exemplars in memory with one column for each dimension in psychological space
@@ -7,7 +7,7 @@
 # rho   An integer determining the distance metric in psychological space (1 = City block distance; 2 = Eucledian distance)
 # p     An integer determining the form of the similarity function (1 = Exponential; 2 = Gaussian)
 
-gcm_pred <- function(param, mem, obs, rho = 2, p = 2) {
+gcm_pred <- function(param, mem, obs, rho = 2, p = 1) {
   w <- param[1]
   w[2] <- 1-w
   c <- param[2]

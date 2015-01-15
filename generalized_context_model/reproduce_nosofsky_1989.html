@@ -94,6 +94,7 @@ size_fit &lt;- optim(
   , mem = mem[, 1:3]
   , obs = obs
   , rho = 2
+  , p = 2
   , data = data[, c(1, 2, 5)]
   , fn = gcm_fit
   , method = &quot;Nelder-Mead&quot;
@@ -101,7 +102,7 @@ size_fit &lt;- optim(
 
 size_fit$par</code></pre>
 <pre><code>## [1] 0.1030612 1.6021732 0.5003389</code></pre>
-<pre class="r"><code>size_pred &lt;- gcm_pred(size_fit$par, mem[, 1:3], obs, rho = 2)</code></pre>
+<pre class="r"><code>size_pred &lt;- gcm_pred(size_fit$par, mem[, 1:3], obs, rho = 2, p = 2)</code></pre>
 <p><br /></p>
 </div>
 <div id="unconstrained-gcm-fits-for-the-angle-condition" class="section level1">
@@ -113,6 +114,7 @@ angle_fit &lt;- optim(
   , mem = mem[, c(1:2, 4)]
   , obs = obs
   , rho = 2
+  , p = 2
   , data = data[, c(3, 4, 6)]
   , fn = gcm_fit
   , method = &quot;Nelder-Mead&quot;
@@ -120,7 +122,7 @@ angle_fit &lt;- optim(
 
 angle_fit$par</code></pre>
 <pre><code>## [1] 0.9824456 3.2014085 0.4283782</code></pre>
-<pre class="r"><code>angle_pred &lt;- gcm_pred(angle_fit$par, mem[, c(1:2, 4)], obs, rho = 2)</code></pre>
+<pre class="r"><code>angle_pred &lt;- gcm_pred(angle_fit$par, mem[, c(1:2, 4)], obs, rho = 2, p = 2)</code></pre>
 <p><br /></p>
 </div>
 <div id="predictions" class="section level1">
