@@ -7,54 +7,33 @@
 # rho   An integer determining the distance metric in psychological space (1 = City block distance; 2 = Eucledian distance)
 # p     An integer determining the form of the similarity function (1 = Exponential; 2 = Gaussian)
 
-gcm_rec_pred <- function(param, mem, obs, rho = 2, p = 1) {
+gcm_rec_pred <- function(param, mem, obs, rho = 2, p = 1, pred = "prop") {
   w <- param["w1"]
   w[2] <- param["w2"]
-  w[3] <- 1-sum(w)
+  w[3] <- param["w3"]
+  w[4] <- param["w4"]
+  w[5] <- param["w5"]
+  w[6] <- 1-sum(w)
   c <- param["c"]
   k <- param["k"]
 
-  if(is.na(w[1])) {             # Assume one psychological dimension
-    w <- 1
-  } else if(is.na(w[2])) {      # Assume two psychological dimensions
-    w[2] <- 1 - w[1]
-    w <- w[-3]
-  }
-  if(is.na(param["m"])) m <- 1  # Memory strength
-
   # Prepare objects
   n_obs <- nrow(obs)
-  mem_cat <- mem[, "category"]
-  obs_cat <- obs[, "category"]
-  mem <- as.matrix(subset(mem, select = -category))
+  mem <- as.matrix(mem)
   ndim <- ncol(mem)
-  obs <- as.matrix(subset(obs, select = -category))
-  all_resp <- matrix(rep(NA, n_obs), nrow = n_obs)
+  obs <- as.matrix(obs)
+  all_resp <- c()
 
   # Model computations
   for(i in 1:n_obs) {
     iobs <- as.vector(obs[i, ])
 
     ## Determine similarities & activation
-    if(sum(mem_cat %in% obs_cat[i]) > 0) { # Only compare studied items to memory
-      d <- w*abs(iobs - t(mem[mem_cat %in% obs_cat[i], ]))^rho        # Only compare to items from the same category, where similarity information is available
-      d <- colSums(d)^(1/rho)             # Eq. 3, Nosofsky (1988)
-      if(!is.na(drest)) d <- c(d, rep(drest, nrow(mem) - length(d)))  # Add assumed mean distance to each items from other categories
-      s <- exp(-c*d^p)
-      if(!is.na(srest)) s <- c(s, srest*(nrow(mem) - length(s)))      # Add assumed similarity for each items from other categories
-    } else {
-      if(!is.na(srest)) {
-        s <- srest*nrow(mem)
-      } else if(!is.na(drest)) {
-        d <- rep(drest, nrow(mem))
-        s <- exp(-c*d^p)
-      } else {                            # Assume no inter-category similarity
-        s <- 0
-      }
-    }
+    d <- w*abs(iobs - t(mem))^rho
+    d <- colSums(d)^(1/rho)               # Eq. 3, Nosofsky (1988)
+    s <- exp(-c*d^p)
 
-    a <- m*s
-    f <- sum(a)                           # Eq. 8, Shin & Nosofsky (1992)
+    f <- sum(s)                           # Eq. 8, Shin & Nosofsky (1992)
 
     if(pred == "single") {
       iresp <- ifelse(f > k, 1, 0)        # adapted from Eq. 6, Nosofksy (1991)
@@ -62,7 +41,7 @@ gcm_rec_pred <- function(param, mem, obs, rho = 2, p = 1) {
       iresp <- f/(f+k)                    # Eq. 9, Shin & Nosofsky (1992)
     }
 
-    all_resp[i,] <- iresp
+    all_resp[i] <- iresp
   }
   return(all_resp)
 }

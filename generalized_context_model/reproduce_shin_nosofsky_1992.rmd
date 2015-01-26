@@ -1,0 +1,98 @@
+---
+title: "Reproduction of model-based analyses by Nosofsky & Shin (1992)"
+author: "Frederik Aust"
+date: "19.12.2014"
+output:
+  html_document:
+    theme: spacelab
+    toc: yes
+---
+
+To validate this implementation of the Generalized Context Model (GCM) for recognition data, I reproduced small parts of the model-based analyses reported in Nosofsky & Shin (1992). The original MDS solutions and response data were provided by Shin & Nosofsky (1992; s. [note on data](data/README.html)).
+
+```{r echo = FALSE}
+source("gcm_rec_pred.r")
+source("gcm_rec_fit.r")
+```
+
+# Experiment 1
+
+```{r}
+trials <- 3 * 50
+
+obs <- c()
+data <- c()
+for(i in 1:3) {
+  obs <- rbind(obs, read.csv2(paste0("data/shin_nosofsky_1992_cat", i, ".csv")))
+  data <- rbind(data, read.csv2(paste0("data/shin_nosofsky_1992_responses_cat", i, ".csv")))
+}
+data$response <- round(data$Observed * trials)
+```
+
+<br />
+
+## Summary fits
+
+```{r}
+mem <- subset(obs, Exemplar %in% paste0("O", 1:6))
+
+ui <- structure(c(1, -1, 1, 0, 0, 0, 0, 0, 0, 1, -1, 0, 1, 0, 0, 0, 0, 0, 1, -1, 0, 0, 1, 0, 0, 0, 0, 1, -1, 0, 0, 0, 1, 0, 0, 0, 1, -1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1), .Dim = c(9L, 7L), .Dimnames = list(NULL, NULL))
+ci <- c(0, -1, 0, 0, 0, 0, 0, 0, 0)
+
+gcm_fit <- constrOptim(
+  theta = c(w1 = 1/6, w2 = 1/6, w3 = 1/6, w4 = 1/6, w5 = 1/6, c = 3, k = 1)
+  , f = gcm_rec_fit
+  , mem = mem[, -1]
+  , obs = obs[, -1]
+  , rho = 2
+  , n = trials
+  , data = data
+  , method = "Nelder-Mead"
+  , ui = ui
+  , ci = ci
+)
+```
+
+In Table 5 Shin & Nosofsky (1992) report the following estimates for the summary fits of the old-new recognition data in experiment 1: $w_1 = .006$, $w_2 = .084$, $w_3 = .102$, $w_4 = .392$, $w_5 = .218$, $c = 4.905$, $k = 0.280$
+
+```{r}
+round(gcm_fit$par, 3)
+gcm_fit$value/2 # -lnL
+```
+
+The resulting fits closely resemble those reported in the paper, however, the estimates vary slightly depending on the starting parameters `theta` used when fitting the data.
+
+<br />
+
+## Predictions
+The resulting estimates allow for a close partial reproduction of Shin & Nosofsky's Figure 2A (1992) plotting observed against predicted proportions of old responses for each stimulus.
+
+```{r echo = FALSE}
+cat_pred <- gcm_rec_pred(gcm_fit$par, mem[, -1], obs[, -1])
+
+par(pty = "s")
+plot(
+  cat_pred
+  , data$Observed
+  , xlab = "Predicted recognition probability"
+  , ylab = "Observed probability"
+  , xlim = c(0, 1)
+  , ylim = c(0, 1)
+  , pch = c(1, rep(2, 6), rep(0, 3))
+  , asp = 1
+  , las = 1
+)
+abline(0, 1)
+legend(
+  "bottomright"
+  , legend = c("Prototype", "Old", "New")
+  , pch = c(1, 2, 0)
+  , inset = 0.1
+  , bty = "n"
+)
+```
+
+<br />
+
+# References
+Shin, H. J., & Nosofsky, R. M. (1992). Similarity-scaling studies of dot-pattern classification and recognition. *Journal of Experimental Psychology: General*, 121(3), 278–304. doi:[10.1037/0096-3445.121.3.278](http://dx.doi.org/10.1037/0096-3445.121.3.278)
