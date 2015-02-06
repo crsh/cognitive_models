@@ -45,8 +45,8 @@ sim_results <- matrix(0, ncol = n_trials, nrow = length(p_encode))
 for (r in 1:n_replications) {
   for(i in 1:3) {
     # Memory is empty on first trial
-    normalized_echo <- get_normalized_echo(probe, NULL, cue_features)
-    expectancy <- get_expectancy(outcome, normalized_echo)
+    normalized_echo <- probe_memory(probe, NULL, cue_features)
+    expectancy <- expect_event(outcome, normalized_echo)
     memory <- learn(
       normalized_echo
       , acquisition_event
@@ -56,8 +56,8 @@ for (r in 1:n_replications) {
     
      # Acquisition trials
     for(j in 2:(n_trials / 2)) {
-      normalized_echo <- get_normalized_echo(probe, memory, cue_features)
-      expectancy <- c(expectancy, get_expectancy(outcome, normalized_echo))
+      normalized_echo <- probe_memory(probe, memory, cue_features)
+      expectancy <- c(expectancy, expect_event(outcome, normalized_echo))
       memory <- learn(
         normalized_echo
         , acquisition_event
@@ -68,8 +68,8 @@ for (r in 1:n_replications) {
     
     # Extinction trials
     for(j in ((n_trials / 2) + 1):n_trials) {
-      normalized_echo <- get_normalized_echo(probe, memory, cue_features)
-      expectancy <- c(expectancy, get_expectancy(outcome, normalized_echo))
+      normalized_echo <- probe_memory(probe, memory, cue_features)
+      expectancy <- c(expectancy, expect_event(outcome, normalized_echo))
       memory <- learn(
         normalized_echo
         , extinction_event
@@ -87,7 +87,7 @@ sim_results <- sim_results / n_replications # Mean of replications
 
 <br />
 
-# Results
+## Results
 The resulting expectancies correspond nicely to those reported by Jamieson, Hannah & Crump (2012) in Figure 1.
 
 ```{r plot_results, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
