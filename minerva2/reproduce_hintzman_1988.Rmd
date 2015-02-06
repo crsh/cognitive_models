@@ -1,0 +1,98 @@
+---
+title: "Reproduction of simulations by Hintzman (1984)"
+author: "Frederik Aust"
+date: "06.02.2015"
+output:
+  html_document:
+    theme: spacelab
+    toc: yes
+---
+
+To validate this implementation of MINERVA2, I reproduced small parts of the simulations reported in Hintzman (1988).
+
+```{r echo = FALSE}
+source("minerva2.R")
+```
+
+<br />
+
+# Frequency judgements
+For reasons of simplicity, I simulated one subject with 5000 runs to yield sufficiently smooth intensity distribution plots (instead of 1000 subjects with 1000 runs each).
+
+```{r setup_simulation}
+frequencies <- 1:5
+
+n_features <- 20
+n_items <- 20
+
+p_encode <- 0.5
+```
+
+```{r frequency_judgments, cache = TRUE}
+results <- c()
+
+for(run in 1:5000) {
+  # Generate items
+  item_features <- sample(c(-1, 0, 1), n_items * n_features, replace = TRUE)
+  items <- matrix(item_features, ncol = n_features)
+  
+  control_features <- sample(c(-1, 0, 1), 4 * n_features, replace = TRUE)
+  control_items <- matrix(control_features, ncol = n_features)
+  
+  item_frequencies <- rep(frequencies, each = 4)
+  
+  # Set up memory
+  ## Save four items per level of frequency into memory with L = 0.5
+  memory <- c()
+  for(i in 1:n_items) {
+    new_traces <- rep(items[i, ], item_frequencies[i])
+    new_traces <- matrix(new_traces, ncol = n_features, byrow = TRUE)
+    memory <- rbind(memory, new_traces)
+  }
+  memory <- forget(memory, p_encode)
+  
+  
+  # Test memory
+  intensities <- c()
+  
+  ## Control items (frequency = 0)
+  control_intensity <- apply(control_items, 1, function(x) probe_memory(x, memory)$intensity)
+  intensities <- cbind(intensities, control_intensity)
+  
+  ## Learned items (frequency = [1, 4])
+  for(i in frequencies) {
+    probes <- items[which(item_frequencies == i), ]
+    
+    intensity <- apply(probes, 1, function(x) probe_memory(x, memory)$intensity)
+    intensities <- cbind(intensities, intensity)
+  }
+  
+  results <- rbind(results, intensities)
+}
+
+colnames(results) <- paste0("freq.", c(0, frequencies))
+```
+
+## Results
+The resulting echo intensities allow for a close reproduction of Hintzman's Figure 1 (1988).
+
+```{r echo = FALSE}
+plot(
+  density(results[, 1])
+  , xlim = c(-0.5, 1.5)
+  , xlab = "Echo Intensity"
+  , ylab = "Probability"
+  , main = ""
+  , axes = FALSE
+  , lwd = 2
+)
+invisible(apply(results[, 2:6], 2, function(x) lines(density(x), lwd = 2)))
+abline(h = 0, lwd = 2)
+axis(1)
+box()
+```
+
+<br />
+
+# References
+Hintzman, D. L. (1988). Judgments of frequency and recognition memory in a multiple-trace memory model. *Psychological Review*, 95(4), 528–551. doi:[10.1037/0033-295X.95.4.528](http://dx.doi.org/10.1037/0033-295X.95.4.528)
