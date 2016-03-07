@@ -1,0 +1,1114 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="Frederik Aust" />
+  <title>Reproduction of model-based analyses by Nosofsky (1989)</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- jQuery -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
+  
+  <!-- bootstrap -->
+  <!--<link href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet"  id="style">-->
+  <script src="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+  
+  <!-- highlight.js -->
+  <!--<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/7.3/styles/default.min.css" rel="stylesheet" id="code-style">-->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/7.3/highlight.min.js"></script>
+  <script>
+  hljs.LANGUAGES.r=function(a){var b="([a-zA-Z]|\\.[a-zA-Z.])[a-zA-Z0-9._]*";return{c:[a.HCM,{b:b,l:b,k:{keyword:"function if in break next repeat else for return switch while try tryCatch|10 stop warning require library attach detach source setMethod setGeneric setGroupGeneric setClass ...|10",literal:"NULL NA TRUE FALSE T F Inf NaN NA_integer_|10 NA_real_|10 NA_character_|10 NA_complex_|10"},r:0},{cN:"number",b:"0[xX][0-9a-fA-F]+[Li]?\\b",r:0},{cN:"number",b:"\\d+(?:[eE][+\\-]?\\d*)?L\\b",r:0},{cN:"number",b:"\\d+\\.(?!\\d)(?:i\\b)?",r:0},{cN:"number",b:"\\d+(?:\\.\\d*)?(?:[eE][+\\-]?\\d*)?i?\\b",r:0},{cN:"number",b:"\\.\\d+(?:[eE][+\\-]?\\d*)?i?\\b",r:0},{b:"`",e:"`",r:0},{cN:"string",b:'"',e:'"',c:[a.BE],r:0},{cN:"string",b:"'",e:"'",c:[a.BE],r:0}]}}(hljs); </script>
+  <!--<script type="text/javascript", src="https://yandex.st/highlightjs/7.3/languages/r.min.js"></script>-->
+  
+  <!-- Manific Popup -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/0.8.9/jquery.magnific-popup.min.js"></script>
+  
+  <script type="text/javascript"
+    src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+  </script>
+  <script defer="defer">
+  // Function to generate the dynamic table of contents
+  jQuery.fn.generate_TOC = function () {
+    var base = $(this[0]);
+  
+    var selectors = ['h1', 'h2', 'h3', 'h4'];
+  
+    var last_ptr = [{}, {}, {}, {}];
+  
+    var anchors = {};
+  
+    generate_anchor = function (text) {
+      var test = text.replace(/\W/g, '_');
+  
+      while(test in anchors){
+        //if no suffix, add one
+        if(test.match(/_\d+$/) === null){
+          test = test + "_2";
+        }
+        //else generate unique id for duplicates by adding one to the suffix
+        else {
+          test = test.replace(/_(\d+)$/, function(match, number){ var num=+number+1; return("_" + num) });
+        }
+      }
+      anchors[test]=1;
+      return(test);
+    }
+  
+    $(selectors.join(',')).filter(function(index) { return $(this).parent().attr("id") != 'header'; }).each(function () {
+  
+      var heading = $(this);
+      var idx = selectors.indexOf(heading.prop('tagName').toLowerCase());
+      var itr = 0;
+  
+      while (itr <= idx) {
+        if (jQuery.isEmptyObject(last_ptr[itr])) {
+          last_ptr[itr] = $('<ul>').addClass('nav');
+          if (itr === 0) {
+            base.append(last_ptr[itr])
+          } else {
+            if(last_ptr[itr-1].children('li').length === 0){
+              last_ptr[itr-1].append(last_ptr[itr]);
+            }
+            else {
+              last_ptr[itr - 1].children('li').last().append(last_ptr[itr]);
+            }
+          }
+        }
+        itr++;
+      }
+      var anchor = generate_anchor(heading.text());
+      heading.attr('id', anchor);
+      var a = $('<a>')
+      .text(heading.text())
+      .attr('href', '#' + anchor);
+  
+    var li = $('<li>')
+      .append(a);
+  
+    last_ptr[idx].append(li);
+    for (i = idx + 1; i < last_ptr.length; i++) {
+      last_ptr[i] = {};
+    }
+    });
+  }
+  /* run scripts when document is ready */
+  $(function() {
+    "use strict";
+  
+    var $window = $(window);
+    var $body = $(document.body);
+  
+    /* size of thumbnails */
+  
+    var hidden_types = ['source']
+    var output_types = ['output', 'message', 'warning', 'error']
+  
+    /* style tables */
+    $('table').addClass('table table-striped table-bordered table-hover table-condensed');
+  
+    $('pre code').each(function(i, e) {
+      hljs.highlightBlock(e);
+    });
+  
+    /* Magnific Popup */
+    $(".thumbnail").each(function(){
+      $(this).magnificPopup({
+        disableOn: 768,
+        closeOnContentClick: true,
+  
+        type: 'image',
+        items: {
+          src: $(this).find('img').attr('src'),
+        }
+      });
+    });
+  
+    function toggle_block(obj, show) {
+      var span = obj.find('span');
+      if(show === true){
+        span.removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+        obj.next('pre').slideDown();
+      }
+      else {
+        span.removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+        obj.next('pre').slideUp();
+      }
+    }
+  
+    function toggle_thumbnails(imgs, show){
+      if(show === true){
+        imgs.parents().show()
+        imgs.slideDown();
+      }
+      else {
+        imgs.slideUp(400, function(){ $(this).parent().hide(); });
+      }
+    }
+  
+    function global_toggle(obj){
+      var type = obj.attr('type');
+      var show = !obj.parent('li').hasClass('active');
+      if(show === true){
+        obj.parent('li').addClass('active');
+      }
+      else{
+        obj.parent('li').removeClass('active');
+      }
+      if(type == 'figure'){
+        toggle_thumbnails($('.thumbnail img'), show);
+      }
+      else {
+        $('.toggle.' + type).each(function() { toggle_block($(this), show); });
+      }
+    }
+  
+    /* onclick toggle next code block */
+    $('.toggle').click(function() {
+      var span = $(this).find('span');
+      toggle_block($(this), !span.hasClass('glyphicon-chevron-down'));
+      return false
+    })
+  
+    // global toggles
+    $('.toggle-global').click(function(){
+      var type = $(this).attr('type');
+      if(type === 'all-source'){
+          $('li a.source').each(function() {
+            global_toggle($(this));
+          });
+        }
+      else if(type === 'all-output'){
+        $.each(output_types, function(i, val){
+          console.log(val);
+          global_toggle($('li a.' + val));
+        });
+      }
+      else {
+        console.log($(this));
+        global_toggle($(this));
+      }
+      return false;
+    });
+    /* table of contents */
+    if($(['h1', 'h2', 'h3', 'h4'].join(',')).length > 0){
+      $('body > #wrap > .container > .row').append('<div class="col-md-2"><div id="toc" class="well sidebar sidenav affix hidden-print"/></div>');
+      $('#toc').generate_TOC();
+    }
+  
+    $.each(hidden_types, function(i, type) {
+      $('li[type=' + type + ']').each(function(){ global_toggle($(this)); });
+    });
+  
+    /* remove paragraphs with no content */
+    $('p:empty').remove();
+  
+    $body.scrollspy({
+      target: '.sidebar',
+    });
+  
+    /* theme switch */
+    $('.theme-switch').click(function(){
+      var css = $('link[title=' + $(this).attr('title') + ']');
+      $('#theme[rel=stylesheet]').attr('href', css.attr('href'));
+      $('.theme-switch').closest('li').removeClass('active');
+      $(this).closest('li').addClass('active');
+      return false;
+    });
+    /* code style switch */ //TODO use same function for both of these?
+    $('.highlight-switch').click(function(){
+      var css = $('link[title="' + $(this).attr('title') + '"]');
+      $('#highlight[rel=stylesheet]').attr('href', css.attr('href'));
+      $('.highlight-switch').closest('li').removeClass('active');
+      $(this).closest('li').addClass('active');
+      return false;
+    });
+  
+    //TODO refresh on show/hide
+    $window.on('load', function () {
+      $body.scrollspy('refresh');
+    })
+  
+  });
+  
+  </script>
+  <style>
+  /* Knitr_bootstrap styles */
+  #header {
+    display: none !important;
+    visibility: hidden !important;
+  }
+  #wrap .container-fluid {
+    padding: 0;
+    overflow: hidden;
+  }
+  .toggle{
+    text-transform: capitalize;
+  }
+  
+  .toggle-global{
+    text-transform: capitalize;
+  }
+  
+  /* Sticky footer styles */
+  * {
+    margin:0;
+  }
+  html,
+  body {
+      height: 100%;
+      padding:0 !important;
+      /* The html and body elements cannot have any padding or margin. */
+      /*overflow-x: hidden;*/
+  }
+  
+  /* Wrapper for page content to push down footer */
+  #wrap {
+      min-height: 100%;
+      height: auto !important;
+      height: 100%;
+      /* Negative indent footer by it's height */
+      margin: 0 auto -120px;
+  }
+  
+  /* Set the fixed height of the footer here */
+  #push,
+  #footer {
+      height: 120px;
+  }
+  
+  #footer {
+    text-align: center;
+  }
+  
+  /* Top level subheader elements.  These are the first nested items underneath a header element. */
+  .header li {
+    font-size: 20px;
+  }
+  
+  /* Makes the font smaller for all subheader elements. */
+  .sub-header li {
+      font-size: 12px;
+  }
+  
+  button.thumbnails {
+    margin-left:0px;
+  }
+  
+  /*
+   * Side navigation
+   *
+   * Scrollspy and affixed enhanced navigation to highlight sections and secondary
+   * sections of docs content.
+   */
+  
+  /* By default it's not affixed in mobile views, so undo that */
+  .sidebar.affix {
+    position: static;
+  }
+  
+  /* First level of nav */
+  .sidenav {
+    margin-top: 30px;
+    margin-bottom: 30px;
+    padding-top:    10px;
+    padding-bottom: 10px;
+    border-radius: 5px;
+  }
+  
+  /* All levels of nav */
+  .sidebar .nav > li > a {
+    display: block;
+    padding: 5px 20px;
+  }
+  .sidebar .nav > li > a:hover,
+  .sidebar .nav > li > a:focus {
+    text-decoration: none;
+    border-right: 1px solid;
+  }
+  .sidebar .nav > .active > a,
+  .sidebar .nav > .active:hover > a,
+  .sidebar .nav > .active:focus > a {
+    font-weight: bold;
+    background-color: transparent;
+    border-right: 1px solid;
+  }
+  
+  /* Nav: second level (shown on .active) */
+  .sidebar .nav .nav {
+    display: none; /* Hide by default, but at >768px, show it */
+    margin-bottom: 8px;
+  }
+  .sidebar .nav .nav > li > a {
+    padding-top:    3px;
+    padding-bottom: 3px;
+    padding-left: 30px;
+    font-size: 90%;
+  }
+  
+  .sidebar .nav .nav .nav > li > a {
+    padding-left: 40px;
+  }
+  .sidebar .nav .nav .nav .nav > li > a {
+    padding-left: 50px;
+  }
+  
+  /* Show and affix the side nav when space allows it */
+  @media screen and (min-width: 992px) {
+    .sidebar .nav > .active > ul {
+      display: block;
+    }
+    /* Widen the fixed sidebar */
+    .sidebar.affix,
+    .sidebar.affix-bottom {
+      width: 213px;
+    }
+    .sidebar.affix-top,
+    .sidebar.affix {
+      position: fixed; /* Undo the static from mobile first approach */
+      top: 30px;
+    }
+    .sidebar.affix-bottom {
+      position: absolute; /* Undo the static from mobile first approach */
+    }
+    .sidebar.affix-bottom .sidenav,
+    .sidebar.affix .sidenav {
+      margin-top: 0;
+      margin-bottom: 0;
+    }
+  }
+  @media screen and (min-width: 1200px) {
+    /* Widen the fixed sidebar again */
+    .sidebar.affix-bottom,
+    .sidebar.affix {
+      width: 263px;
+    }
+  }
+  
+  #toc {
+    padding: 10px 0px;
+    margin:0;
+    border:0;
+  }
+  
+  
+  .panel pre {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  button + pre {
+    margin: 0;
+    padding: 0;
+  }
+  pre code {
+    border-radius: 0;
+  }
+  /* Magnific Popup CSS */
+  .mfp-bg {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1042;
+    overflow: hidden;
+    position: fixed;
+    background: #0b0b0b;
+    opacity: 0.8;
+    filter: alpha(opacity=80); }
+  
+  .mfp-wrap {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1043;
+    position: fixed;
+    outline: none !important;
+    -webkit-backface-visibility: hidden; }
+  
+  .mfp-container {
+    text-align: center;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    padding: 0 8px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box; }
+  
+  .mfp-container:before {
+    content: '';
+    display: inline-block;
+    height: 100%;
+    vertical-align: middle; }
+  
+  .mfp-align-top .mfp-container:before {
+    display: none; }
+  
+  .mfp-content {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    margin: 0 auto;
+    text-align: left;
+    z-index: 1045; }
+  
+  .mfp-inline-holder .mfp-content,
+  .mfp-ajax-holder .mfp-content {
+    width: 100%;
+    cursor: auto; }
+  
+  .mfp-ajax-cur {
+    cursor: progress; }
+  
+  .mfp-zoom-out-cur,
+  .mfp-zoom-out-cur .mfp-image-holder .mfp-close {
+    cursor: -moz-zoom-out;
+    cursor: -webkit-zoom-out;
+    cursor: zoom-out; }
+  
+  .mfp-zoom {
+    cursor: pointer;
+    cursor: -webkit-zoom-in;
+    cursor: -moz-zoom-in;
+    cursor: zoom-in; }
+  
+  .mfp-auto-cursor .mfp-content {
+    cursor: auto; }
+  
+  .mfp-close,
+  .mfp-arrow,
+  .mfp-preloader,
+  .mfp-counter {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none; }
+  
+  .mfp-loading.mfp-figure {
+    display: none; }
+  
+  .mfp-hide {
+    display: none !important; }
+  
+  .mfp-preloader {
+    color: #cccccc;
+    position: absolute;
+    top: 50%;
+    width: auto;
+    text-align: center;
+    margin-top: -0.8em;
+    left: 8px;
+    right: 8px;
+    z-index: 1044; }
+  
+  .mfp-preloader a {
+    color: #cccccc; }
+  
+  .mfp-preloader a:hover {
+    color: white; }
+  
+  .mfp-s-ready .mfp-preloader {
+    display: none; }
+  
+  .mfp-s-error .mfp-content {
+    display: none; }
+  
+  button.mfp-close,
+  button.mfp-arrow {
+    overflow: visible;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    -webkit-appearance: none;
+    display: block;
+    padding: 0;
+    z-index: 1046;
+    -webkit-box-shadow: none;
+    box-shadow: none; }
+  
+  button::-moz-focus-inner {
+    padding: 0;
+    border: 0; }
+  
+  .mfp-close {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    text-decoration: none;
+    text-align: center;
+    opacity: 0.65;
+    padding: 0 0 18px 10px;
+    color: white;
+    font-style: normal;
+    font-size: 28px;
+    font-family: Arial, Baskerville, monospace; }
+    .mfp-close:hover, .mfp-close:focus {
+      opacity: 1; }
+    .mfp-close:active {
+      top: 1px; }
+  
+  .mfp-close-btn-in .mfp-close {
+    color: #333333; }
+  
+  .mfp-image-holder .mfp-close,
+  .mfp-iframe-holder .mfp-close {
+    color: white;
+    right: -6px;
+    text-align: right;
+    padding-right: 6px;
+    width: 100%; }
+  
+  .mfp-counter {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: #cccccc;
+    font-size: 12px;
+    line-height: 18px; }
+  
+  .mfp-arrow {
+    position: absolute;
+    opacity: 0.65;
+    margin: 0;
+    top: 50%;
+    margin-top: -55px;
+    padding: 0;
+    width: 90px;
+    height: 110px;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0); }
+  
+  .mfp-arrow:active {
+    margin-top: -54px; }
+  
+  .mfp-arrow:hover,
+  .mfp-arrow:focus {
+    opacity: 1; }
+  
+  .mfp-arrow:before, .mfp-arrow:after,
+  .mfp-arrow .mfp-b,
+  .mfp-arrow .mfp-a {
+    content: '';
+    display: block;
+    width: 0;
+    height: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    margin-top: 35px;
+    margin-left: 35px;
+    border: medium inset transparent; }
+  .mfp-arrow:after,
+  .mfp-arrow .mfp-a {
+    border-top-width: 13px;
+    border-bottom-width: 13px;
+    top: 8px; }
+  .mfp-arrow:before,
+  .mfp-arrow .mfp-b {
+    border-top-width: 21px;
+    border-bottom-width: 21px; }
+  
+  .mfp-arrow-left {
+    left: 0; }
+    .mfp-arrow-left:after,
+    .mfp-arrow-left .mfp-a {
+      border-right: 17px solid white;
+      margin-left: 31px; }
+    .mfp-arrow-left:before,
+    .mfp-arrow-left .mfp-b {
+      margin-left: 25px;
+      border-right: 27px solid #3f3f3f; }
+  
+  .mfp-arrow-right {
+    right: 0; }
+    .mfp-arrow-right:after,
+    .mfp-arrow-right .mfp-a {
+      border-left: 17px solid white;
+      margin-left: 39px; }
+    .mfp-arrow-right:before,
+    .mfp-arrow-right .mfp-b {
+      border-left: 27px solid #3f3f3f; }
+  
+  .mfp-iframe-holder {
+    padding-top: 40px;
+    padding-bottom: 40px; }
+  
+  .mfp-iframe-holder .mfp-content {
+    line-height: 0;
+    width: 100%;
+    max-width: 900px; }
+  
+  .mfp-iframe-scaler {
+    width: 100%;
+    height: 0;
+    overflow: hidden;
+    padding-top: 56.25%; }
+  
+  .mfp-iframe-scaler iframe {
+    position: absolute;
+    display: block;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    background: black; }
+  
+  .mfp-iframe-holder .mfp-close {
+    top: -40px; }
+  
+  /* Main image in popup */
+  img.mfp-img {
+    width: auto;
+    max-width: 100%;
+    height: auto;
+    display: block;
+    line-height: 0;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    padding: 40px 0 40px;
+    margin: 0 auto; }
+  
+  /* The shadow behind the image */
+  .mfp-figure:after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 40px;
+    bottom: 40px;
+    display: block;
+    right: 0;
+    width: auto;
+    height: auto;
+    z-index: -1;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
+    background: #444444; }
+  
+  .mfp-figure {
+    line-height: 0; }
+  
+  .mfp-bottom-bar {
+    margin-top: -36px;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    cursor: auto; }
+  
+  .mfp-title {
+    text-align: left;
+    line-height: 18px;
+    color: #f3f3f3;
+    word-wrap: break-word;
+    padding-right: 36px; }
+  
+  .mfp-figure small {
+    color: #bdbdbd;
+    display: block;
+    font-size: 12px;
+    line-height: 14px; }
+  
+  .mfp-image-holder .mfp-content {
+    max-width: 100%; }
+  
+  .mfp-gallery .mfp-image-holder .mfp-figure {
+    cursor: pointer; }
+  
+  @media screen and (max-width: 800px) and (orientation: landscape), screen and (max-height: 300px) {
+    /**
+     * Remove all paddings around the image on small screen
+     */
+    .mfp-img-mobile .mfp-image-holder {
+      padding-left: 0;
+      padding-right: 0; }
+  
+    .mfp-img-mobile img.mfp-img {
+      padding: 0; }
+  
+    /* The shadow behind the image */
+    .mfp-img-mobile .mfp-figure:after {
+      top: 0;
+      bottom: 0; }
+  
+    .mfp-img-mobile .mfp-bottom-bar {
+      background: rgba(0, 0, 0, 0.6);
+      bottom: 0;
+      margin: 0;
+      top: auto;
+      padding: 3px 5px;
+      position: fixed;
+      -webkit-box-sizing: border-box;
+      -moz-box-sizing: border-box;
+      box-sizing: border-box; }
+  
+    .mfp-img-mobile .mfp-bottom-bar:empty {
+      padding: 0; }
+  
+    .mfp-img-mobile .mfp-counter {
+      right: 5px;
+      top: 3px; }
+  
+    .mfp-img-mobile .mfp-close {
+      top: 0;
+      right: 0;
+      width: 35px;
+      height: 35px;
+      line-height: 35px;
+      background: rgba(0, 0, 0, 0.6);
+      position: fixed;
+      text-align: center;
+      padding: 0; }
+  
+    .mfp-img-mobile .mfp-figure small {
+      display: inline;
+      margin-left: 5px; } }
+  @media all and (max-width: 900px) {
+    .mfp-arrow {
+      -webkit-transform: scale(0.75);
+      transform: scale(0.75); }
+  
+    .mfp-arrow-left {
+      -webkit-transform-origin: 0;
+      transform-origin: 0; }
+  
+    .mfp-arrow-right {
+      -webkit-transform-origin: 100%;
+      transform-origin: 100%; }
+  
+    .mfp-container {
+      padding-left: 6px;
+      padding-right: 6px; } }
+  .mfp-ie7 .mfp-img {
+    padding: 0; }
+  .mfp-ie7 .mfp-bottom-bar {
+    width: 600px;
+    left: 50%;
+    margin-left: -300px;
+    margin-top: 5px;
+    padding-bottom: 5px; }
+  .mfp-ie7 .mfp-container {
+    padding: 0; }
+  .mfp-ie7 .mfp-content {
+    padding-top: 44px; }
+  .mfp-ie7 .mfp-close {
+    top: 0;
+    right: 0;
+    padding-top: 0; }
+  
+  //Magnific overrides
+  .mfp-image img{
+    background: white;
+  }
+  .mfp-figure:after {
+    background: white;
+  }
+  
+  /*
+   * Off Canvas navbar toggle right
+   * --------------------------------------------------
+   */
+  
+  @media screen and (max-width: 768px) {
+    .row-offcanvas .collapsing {
+    -webkit-transition: none 0;
+      -moz-transition: none 0;
+      transition: none 0;
+    }
+   .row-offcanvas .navbar {
+    position: absolute;
+    z-index: 2;
+      right:0;
+      height:100%;
+      width:55px;
+      border:0;
+      background-color:transparent;
+    }
+    .row-offcanvas .navbar-toggle {
+      margin-right: 5px;
+      margin-left: 5px;
+    }
+    .row-offcanvas {
+      position: relative;
+    }
+    .row-offcanvas-right.active .navbar {
+    position: absolute;
+    z-index: 2;
+      right: -28.4%;
+      width:40%;
+      background-color:#eee;
+      border:0 solid #ddd;
+      border-left-width:1px;
+    }
+    .row-offcanvas-right.active {
+      left: -30%;
+    }
+    .row-offcanvas-right.active .navbar-collapse {
+      position: relative;
+      width: 100%;
+    }
+    .row-offcanvas .content {
+    /*width:calc(100% - 60px);*/
+    }
+  }
+  </style>
+</head>
+<body>
+<div id="header">
+<h1 class="title">Reproduction of model-based analyses by Nosofsky (1989)</h1>
+<h2 class="author">Frederik Aust</h2>
+</div>
+<div id="wrap">
+<div class="container">
+<div class="row row-offcanvas row-offcanvas-right">
+<div class="contents col-xs-12 col-md-10">
+<p>To validate this implementation of the Bayesian Generalized Context Model (GCM), I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. <a href="../data/README.html">note on data</a>).</p>
+<div class="row">
+<button class="source R toggle btn btn-xs btn-primary">
+<span class="glyphicon glyphicon-chevron-down"></span> R source
+</button>
+<pre style=""><code class="source r">similarities <- read.csv2("../data/nosofsky_1989_similarities.csv")[, -1]
+similarities$size <- c(0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 2, 2, 0, 2, 0, 0)
+similarities$angle <- c(0, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 2, 0, 0, 2, 0)
+  
+data <- read.csv2("../data/nosofsky_1989_responses.csv")[, -1]
+data$n_size <- rowSums(data[, 1:2])
+data$n_angle <- rowSums(data[, 3:4])</code></pre>
+</div>
+<p><br /></p>
+<h1>Unconstrained GCM fits for the size condition</h1>
+<p>The original parameter estimates reported in Table 5 by Nosofsky (1989) are <span class="math"><em>w</em><sub>1</sub> = .10</span>, <span class="math"><em>c</em> = 1.60</span>, and <span class="math"><em>b</em><sub>1</sub> = .50</span>.</p>
+<div class="row">
+<button class="source R toggle btn btn-xs btn-primary">
+<span class="glyphicon glyphicon-chevron-down"></span> R source
+</button>
+<pre style=""><code class="source r">tests <- as.matrix(similarities[, 1:2])
+memory <- as.matrix(subset(similarities, size != 0)[, 1:2])
+size_data <- list(
+  y = data$Cat.1.s
+  , tests = tests
+  , memory = memory
+  , ntrials = data$n_size
+  , p = 2 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, size != 0)[, 3])
+)
+
+init_values <- list(
+  list(c = 4, w = 0.5, b = 0.5)
+  , list(c = 2, w = 0.8, b = 0.3)
+  , list(c = 3, w = 0.2, b = 0.7)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))), "pred_y")
+
+# Sample
+size_samples <- run.jags(
+  model = "GCM_agg.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = size_data
+  , n.chains = 3
+  , sample = 5e4
+  , burnin = 100
+  , thin = 2
+  , method = "rjparallel"
+)</code></pre>
+</div>
+<div class="row">
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Lower95</th>
+<th align="right">Median</th>
+<th align="right">Upper95</th>
+<th align="right">Mean</th>
+<th align="right">SD</th>
+<th align="right">Mode</th>
+<th align="right">MCerr</th>
+<th align="right">MC%ofSD</th>
+<th align="right">SSeff</th>
+<th align="right">AC.100</th>
+<th align="right">psrf</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">c</td>
+<td align="right">1.4194286</td>
+<td align="right">1.6105803</td>
+<td align="right">1.8065747</td>
+<td align="right">1.6144983</td>
+<td align="right">0.0994530</td>
+<td align="right">NA</td>
+<td align="right">0.0005875</td>
+<td align="right">0.6</td>
+<td align="right">28655</td>
+<td align="right">0.0036076</td>
+<td align="right">1.000065</td>
+</tr>
+<tr class="even">
+<td align="left">w</td>
+<td align="right">0.0092623</td>
+<td align="right">0.1063377</td>
+<td align="right">0.1994446</td>
+<td align="right">0.1076491</td>
+<td align="right">0.0500600</td>
+<td align="right">NA</td>
+<td align="right">0.0002974</td>
+<td align="right">0.6</td>
+<td align="right">28326</td>
+<td align="right">-0.0016230</td>
+<td align="right">1.000161</td>
+</tr>
+<tr class="odd">
+<td align="left">b</td>
+<td align="right">0.4688248</td>
+<td align="right">0.5001645</td>
+<td align="right">0.5300070</td>
+<td align="right">0.5001556</td>
+<td align="right">0.0156018</td>
+<td align="right">NA</td>
+<td align="right">0.0000900</td>
+<td align="right">0.6</td>
+<td align="right">30047</td>
+<td align="right">0.0005734</td>
+<td align="right">1.000085</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><br /></p>
+<h1>Unconstrained GCM fits for the angle condition</h1>
+<p>The original parameter estimates reported in Table 5 by Nosofsky (1989) are <span class="math"><em>w</em><sub>1</sub> = .98</span>, <span class="math"><em>c</em> = 3.20</span>, and <span class="math"><em>b</em><sub>1</sub> = .43</span>.</p>
+<div class="row">
+<button class="source R toggle btn btn-xs btn-primary">
+<span class="glyphicon glyphicon-chevron-down"></span> R source
+</button>
+<pre style=""><code class="source r">memory <- as.matrix(subset(similarities, angle != 0)[, 1:2])
+angle_data <- list(
+  y = data$Cat.1.a
+  , tests = tests
+  , memory = memory
+  , ntrials = data$n_angle
+  , p = 2 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+angle_samples <- run.jags(
+  model = "GCM_agg.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = angle_data
+  , n.chains = 3
+  , sample = 5e4
+  , burnin = 100
+  , thin = 2
+  , method = "rjparallel"
+)</code></pre>
+</div>
+<div class="row">
+<table>
+<thead>
+<tr class="header">
+<th align="left"></th>
+<th align="right">Lower95</th>
+<th align="right">Median</th>
+<th align="right">Upper95</th>
+<th align="right">Mean</th>
+<th align="right">SD</th>
+<th align="right">Mode</th>
+<th align="right">MCerr</th>
+<th align="right">MC%ofSD</th>
+<th align="right">SSeff</th>
+<th align="right">AC.100</th>
+<th align="right">psrf</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">c</td>
+<td align="right">2.9423209</td>
+<td align="right">3.2091811</td>
+<td align="right">3.5041050</td>
+<td align="right">3.2115166</td>
+<td align="right">0.1429329</td>
+<td align="right">NA</td>
+<td align="right">0.0008266</td>
+<td align="right">0.6</td>
+<td align="right">29903</td>
+<td align="right">-0.0059636</td>
+<td align="right">1.000059</td>
+</tr>
+<tr class="even">
+<td align="left">w</td>
+<td align="right">0.9518092</td>
+<td align="right">0.9788162</td>
+<td align="right">0.9999965</td>
+<td align="right">0.9771316</td>
+<td align="right">0.0138724</td>
+<td align="right">NA</td>
+<td align="right">0.0000801</td>
+<td align="right">0.6</td>
+<td align="right">30000</td>
+<td align="right">-0.0039493</td>
+<td align="right">1.000075</td>
+</tr>
+<tr class="odd">
+<td align="left">b</td>
+<td align="right">0.4009108</td>
+<td align="right">0.4275832</td>
+<td align="right">0.4548086</td>
+<td align="right">0.4276419</td>
+<td align="right">0.0137742</td>
+<td align="right">NA</td>
+<td align="right">0.0000784</td>
+<td align="right">0.6</td>
+<td align="right">30861</td>
+<td align="right">0.0020241</td>
+<td align="right">1.000031</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><br /></p>
+<h1>Predictions</h1>
+<p>The resulting fits allow for a close partial reproduction of Nosofsky's Figure 6 (1989) plotting observed against predicted proportions of category 1 responses for each stimulus.</p>
+<div class="row">
+<div class="row">
+<div class="col-md-offset-3 col-md-6">
+<a href="#" class="thumbnail"><img src="data:image/png;base64,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" /></a>
+</div>
+</div>
+</div>
+<p><br /></p>
+<h1>References</h1>
+Nosofsky, R. M. (1989). Further tests of an exemplar-similarity approach to relating identification and categorization. <em>Perception &amp; Psychophysics</em>, 45(4), 279–290. doi: <a href="http://dx.doi.org/10.3758/BF03204942">10.3758/BF03204942</a>
+</div>
+</div>
+</div>
+<div id="push">
+
+</div>
+<div id="footer">
+<div class="container">
+<p class="text-muted" id="credit">
+Styled with <a href="https://github.com/jimhester/knitrBootstrap">knitrBootstrap</a>
+</p>
+</div>
+</div>
+<link rel="stylesheet" id="theme" href="https://netdna.bootstrapcdn.com/bootswatch/3.0.0/flatly/bootstrap.min.css" media="screen"></link><link rel="stylesheet" id="highlight" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/7.3/styles/xcode.min.css" media="screen"></link>
+</div>
+</body>
+</html>
