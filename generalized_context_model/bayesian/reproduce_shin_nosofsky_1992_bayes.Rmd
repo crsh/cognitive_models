@@ -1,0 +1,122 @@
+---
+title: "Reproduction of model-based analyses by Nosofsky & Shin (1992)"
+author: "Frederik Aust"
+output:
+  knitrBootstrap::bootstrap_document:
+    highlight: xcode
+    theme: flatly
+    menu: false
+---
+
+To validate this implementation of the Generalized Context Model (GCM) for recognition data, I reproduced small parts of the model-based analyses reported in Nosofsky & Shin (1992). The original MDS solutions and response data were provided by Shin & Nosofsky (1992; s. [note on data](../data/README.html)).
+
+```{r echo = FALSE, message = FALSE}
+library("runjags")
+library("vioplot")
+```
+
+# Experiment 1
+
+```{r}
+trials <- 3 * 50
+
+tests <- c()
+data <- c()
+for(i in 1:3) {
+  tests <- rbind(tests, read.csv2(paste0("../data/shin_nosofsky_1992_cat", i, ".csv")))
+  data <- rbind(data, read.csv2(paste0("../data/shin_nosofsky_1992_responses_cat", i, ".csv")))
+}
+data$response <- round(data$Observed * trials)
+```
+
+<br />
+
+## Summary fits
+
+```{r message = FALSE, results = "hide"}
+recognition_data <- list(
+  y = data$response
+  , tests = as.matrix(tests[, -1])
+  , memory = as.matrix(subset(tests, Exemplar %in% paste0("O", 1:6))[, -1])
+  , ntrials = rep(trials, nrow(tests))
+  , p = 1 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+)
+
+init_values <- list(
+  list(c = 4, w = c(0.5, 0.2, -0.1, 0.1, -0.2), k = 0.5)
+  , list(c = 2, w = c(0, 0, 0, 0, 0), k = 0.3)
+  , list(c = 3, w = c(0.25, 0.3, -0.3, -0.15, -0.05), k = 0.7)
+)
+
+poi <- c("c", "wj", "k", "pred_y")
+
+# Sample
+gcm_samples <- run.jags(
+  model = "GCM_agg_recognition.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = recognition_data
+  , n.chains = 3
+  , sample = 5e4
+  , burnin = 100
+  , thin = 5
+  , method = "rjparallel"
+)
+```
+
+In Table 5 Shin & Nosofsky (1992) report the following estimates for the summary fits of the old-new recognition data in experiment 1: $w_1 = .006$, $w_2 = .084$, $w_3 = .102$, $w_4 = .392$, $w_5 = .218$, $c = 4.905$, $k = 0.280$
+
+```{r echo = FALSE, results = "asis"}
+knitr::kable(summary(gcm_samples)[c("c", paste0("wj[", 1:6, "]"), "k"), ])
+```
+
+The resulting fits closely resemble those reported in the paper.
+
+<br />
+
+## Predictions
+The resulting estimates allow for a close partial reproduction of Shin & Nosofsky's Figure 2A (1992) plotting observed against predicted proportions of old responses for each stimulus.
+
+```{r echo = FALSE, warning = FALSE}
+all_gcm_samples <- coda::as.mcmc(gcm_samples)
+
+par(pty = "s")
+plot(NA, NA
+  , xlim = c(0, 1)
+  , ylim = c(0, 1)
+  , xlab = "Predicted recognition probability"
+  , ylab = "Observed probability"
+  , asp = 1
+  , las = 1
+)
+
+for(i in 1:nrow(tests)) {
+  vioplot(
+    all_gcm_samples[, paste0("pred_y[", i, "]")] / trials
+    , at = (data$response  / trials)[i]
+    , horizontal = TRUE
+    , col = scales::alpha(grey(0.7), 0.15)
+    , border = FALSE
+    , rectCol = grey(0.5)
+    , colMed = "black"
+    , pchMed = rep(c(1, rep(2, 6), rep(0, 3)), 3)[i]
+    , add = TRUE
+    , wex = 0.15
+  )
+}
+
+abline(0, 1)
+legend(
+  "bottomright"
+  , legend = c("Prototype", "Old", "New")
+  , pch = c(1, 2, 0)
+  , inset = 0.1
+  , bty = "n"
+)
+```
+
+<br />
+
+# References
+Shin, H. J., & Nosofsky, R. M. (1992). Similarity-scaling studies of dot-pattern classification and recognition. *Journal of Experimental Psychology: General*, 121(3), 278–304. doi:[10.1037/0096-3445.121.3.278](http://dx.doi.org/10.1037/0096-3445.121.3.278)

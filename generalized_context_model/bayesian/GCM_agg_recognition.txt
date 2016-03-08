@@ -1,0 +1,41 @@
+# Generalized Context Model
+data {
+  ntests <- dim(tests)
+  nmemory <- dim(memory)
+  ndim <- ntests[2]
+}
+
+model {
+  # Decision Data
+  for (i in 1:ntests[1]) {
+    y[i] ~ dbin(r[i], ntrials[i])
+    pred_y[i] ~ dbin(r[i], ntrials[i])
+  }
+
+  # Decision Probabilities
+  for (i in 1:ntests[1]) {
+    f[i] <- sum(s[i, ])
+    r[i] <- f[i] / (f[i] + k)
+  }
+
+  # Similarities
+  for (i in 1:ntests[1]) {
+    for (j in 1:nmemory[1]) {
+      s[i, j] <- exp(-c * (sum(wj * abs(tests[i, ] - memory[j, ])^rho)^(1/rho))^p)
+    }
+  }
+
+  # Priors
+  c  ~ dunif(0, 10)
+  k ~ dunif(0, 5)
+
+  for(i in 1:(ndim - 1)) {
+    w[i] ~ dnorm(0, 0.1)
+  }
+
+  # Rescale parameters
+  for(i in 1:(ndim - 1)) {
+    wj[i] <- phi(qnorm(1/ndim, 0, 1) + w[i])
+  }
+  wj[ndim] <- 1 - sum(wj[1:(ndim - 1)])
+}
