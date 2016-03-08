@@ -30,7 +30,7 @@ model {
   k ~ dunif(0, 5)
 
   for(i in 1:(ndim - 1)) {
-    w[i] ~ dnorm(0, 0.1)
+    w[i] ~ dnorm(0, 1)
   }
 
   # Rescale parameters
