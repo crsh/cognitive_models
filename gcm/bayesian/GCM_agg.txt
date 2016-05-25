@@ -14,8 +14,6 @@ model {
   # Decision Probabilities
   for (i in 1:ntests[1]) {
     r[i] <- sum(numerator[i, ]) / sum(denominator[i, ])
-    sum_num[i] <- sum(numerator[i, ])
-    sum_denom[i] <- sum(denominator[i, ])
     for (j in 1:nmemory[1]) {
       tmp1[i, j, 1] <- b * s[i, j]
       tmp1[i, j, 2] <- 0
@@ -33,7 +31,9 @@ model {
     }
   }
 
-  wk[1:2] <- c(w, 1-w)
+  wk[1] <- w
+  wk[2] <- 1-w
+  #wk[1:2] <- c(w, 1-w) # Requires JAGS 4.0.0
 
   # Priors
   c  ~ dunif(0, 5)
