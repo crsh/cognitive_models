@@ -10,10 +10,8 @@ probe_memory <- function (probe, memory, cue_features) {
     return(normalized_echo)
   } else {
     # Compare only features associated with cues (p. 64, Jamieson, Crump, & Hannah, 2012)
-    relevant_features <- rep(FALSE, length(probe))
-    relevant_features[cue_features] <- TRUE
-    probe <- probe[relevant_features]
-    relevant_memory <- matrix(memory[, relevant_features], ncol = sum(relevant_features))
+    probe <- probe[cue_features]
+    relevant_memory <- matrix(memory[, cue_features], ncol = length(cue_features))
 
     # Calculate echo
 #     similarity <- colSums(probe * t(relevant_memory)) / (sqrt(sum(probe^2)) * sqrt(rowSums(relevant_memory^2))) # Eq. 7, Jamieson, Crump, & Hannah (2012)
