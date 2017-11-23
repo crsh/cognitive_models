@@ -1,0 +1,429 @@
+---
+title: "Validate EB-DDM and compare to EB-RW"
+author: "Frederik Aust"
+output:
+  knitrBootstrap::bootstrap_document:
+    highlight: xcode
+    theme: flatly
+    menu: false
+---
+
+```{r echo = FALSE}
+library("dplyr")
+library("ggplot2")
+theme_set(papaja::theme_apa())
+
+library("runjags")
+rjags::load.module("glm")
+rjags::load.module("wiener")
+
+library("parallel")
+
+source("../ebddm_pred.R")
+source("../../ebrw/ebrw_sim.R")
+source("../../gcm/gcm_pred.r")
+```
+
+# Parameter recovery for EB-DDM
+
+```{r load_similarities}
+similarities <- read.csv2("../../gcm/data/nosofsky_1989_similarities.csv")[, -1]
+similarities$size <- c(0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 2, 2, 0, 2, 0, 0)
+similarities$angle <- c(0, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 2, 0, 0, 2, 0)
+similarities$category <- rep(c(1, 1, 2, 2), 4)
+
+memory <- as.matrix(subset(similarities, angle != 0)[, 1:2])
+```
+
+```{r generate_ground_truth, cache = TRUE}
+ebddm_truth <- ebddm_pred(
+  param = c(w = 0.7, c = 2, alpha = 3, tau = 0.15, beta = 0.5)
+  , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+  , obs = as.matrix(similarities[, 1:2])
+  , n_trials = 1000
+)
+
+ebddm_truth$resp_type <- ifelse(
+  (ebddm_truth$resp == "upper" & similarities[ebddm_truth$stimulus, "category"] == 1) |
+  (ebddm_truth$resp == "lower" & similarities[ebddm_truth$stimulus, "category"] == 2)
+  , "correct", "error")
+ebddm_truth$rt <- ifelse(ebddm_truth$resp_type == "correct", ebddm_truth$q, -ebddm_truth$q)
+
+ebddm_truth$xi1 <- similarities[ebddm_truth$stimulus, "xi1"]
+ebddm_truth$xi2 <- similarities[ebddm_truth$stimulus, "xi2"]
+```
+
+
+```{r parameter_recovery, dependson = "generate_ground_truth", results = "hide", cache = TRUE}
+ebddm_truth$q <- ifelse(ebddm_truth$resp == "upper", ebddm_truth$q, -ebddm_truth$q)
+tests <- as.matrix(ebddm_truth[, c("xi1", "xi2")])
+
+init_values <- list(
+  list(w = 0.5, c = 4, alpha = 5, beta = 0.3, tau = 0.2)
+  , list(w = 0.8, c = 2, alpha = 3, beta = 0.7, tau = 0.1)
+  , list(w = 0.2, c = 3, alpha = 8, beta = 0.5, tau = 0.25)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))))
+
+angle_data <- list(
+  rt = ebddm_truth$q
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)
+  , nmemory = dim(memory)
+  , p = 1 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+angle_samples <- run.jags(
+  model = "ebddm_agg_rec.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = angle_data
+  , n.chains = 3
+  , sample = 1e3
+  , burnin = 1e3
+  , thin = 1
+  , method = "rjparallel"
+)
+```
+
+```{r}
+knitr::kable(summary(angle_samples))
+```
+
+
+```{r posterior_predictive_checks}
+ebddm_truth <- ebddm_pred(
+  param = c(w = 0.7, c = 2, alpha = 3, tau = 0.15, beta = 0.5)
+  , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+  , obs = as.matrix(similarities[, 1:2])
+  , n_trials = 1000
+)
+
+ebddm_truth$resp_type <- ifelse(
+  (ebddm_truth$resp == "upper" & similarities[ebddm_truth$stimulus, "category"] == 1) |
+  (ebddm_truth$resp == "lower" & similarities[ebddm_truth$stimulus, "category"] == 2)
+  , "correct", "error")
+
+ebddm_truth$rt <- ifelse(ebddm_truth$resp_type == "correct", ebddm_truth$q, -ebddm_truth$q)
+
+posterior_predictive_distribution <- parallel::mclapply(angle_samples$mcmc, function(x) {
+  apply(x, 1, function(y) {
+    ebddm_pred(
+      param = y
+      , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+      , obs = as.matrix(similarities[, 1:2])
+      , n_trials = 1
+    )
+  })
+})
+
+posterior_predictive_distribution <- lapply(posterior_predictive_distribution, function(x) do.call(rbind, x)) %>%
+  do.call(rbind, .)
+
+posterior_predictive_distribution$resp_type <- ifelse(
+  (posterior_predictive_distribution$resp == "upper" & similarities[posterior_predictive_distribution$stimulus, "category"] == 1) |
+  (posterior_predictive_distribution$resp == "lower" & similarities[posterior_predictive_distribution$stimulus, "category"] == 2)
+  , "correct", "error")
+
+posterior_predictive_distribution$rt <- ifelse(
+  posterior_predictive_distribution$resp_type == "correct"
+  , posterior_predictive_distribution$q
+  , -posterior_predictive_distribution$q
+)
+```
+
+
+```{r histogram_observed_vs_predicted, fig.width = 12, fig.height = 9}
+ebddm_truth %>%
+  group_by(resp_type) %>%
+  ggplot() +
+    geom_histogram(aes(fill = resp_type, x = rt, y = ..density..), binwidth = 0.25, position = "identity") +
+    geom_histogram(data = posterior_predictive_distribution %>% group_by(resp_type, stimulus), aes(fill = resp_type, x = rt, y = -..density..), binwidth = 0.25, position = "identity", alpha = 0.3) +
+    geom_hline(yintercept = 0, size = 0.25, color = grey(0.4)) +
+    facet_wrap(~ stimulus, scales = "free_y")
+```
+
+```{r quantile_probability_plot}
+true_probability_quantiles <- ebddm_truth %>%
+  mutate(
+    correct = ifelse(resp_type == "correct", 1, 0)
+    , q = abs(q) * 1000
+  ) %>%
+  group_by(stimulus, resp_type) %>%
+  summarize(
+    p = length(q) / (nrow(ebddm_truth) / (length(unique(ebddm_truth$stimulus))))
+    , q1 = quantile(q, 0.1)
+    , q3 = quantile(q, 0.3)
+    , q5 = quantile(q, 0.5)
+    , q7 = quantile(q, 0.7)
+    , q9 = quantile(q, 0.9)
+  ) %>%
+  tidyr::gather(quantile, rt, q1:q9) %>%
+  ungroup() %>%
+  mutate(
+    p = ifelse((p > 0.5 & resp_type == "error") | (p < 0.5 & resp_type == "correct"), 1 - p, p)
+    , resp_type_quantile = paste(quantile, resp_type, sep = "_")
+    , pp = round(ifelse(p > 0.5, 1 - p, p), 3)
+    , stimulus = factor(pp, labels = unique(stimulus)[order(unique(pp))])
+  )
+
+ebddm_probability_quantiles <- posterior_predictive_distribution %>%
+  mutate(
+    correct = ifelse(resp_type == "correct", 1, 0)
+    , q = abs(rt) * 1000
+  ) %>%
+  group_by(stimulus, resp_type) %>%
+  summarize(
+    p = length(q) / (nrow(posterior_predictive_distribution) / (length(unique(posterior_predictive_distribution$stimulus))))
+    , q1 = quantile(q, 0.1)
+    , q3 = quantile(q, 0.3)
+    , q5 = quantile(q, 0.5)
+    , q7 = quantile(q, 0.7)
+    , q9 = quantile(q, 0.9)
+  ) %>%
+  tidyr::gather(quantile, rt, q1:q9) %>%
+  ungroup() %>%
+  mutate(
+    p = ifelse((p > 0.5 & resp_type == "error") | (p < 0.5 & resp_type == "correct"), 1 - p, p)
+    , resp_type_quantile = paste(quantile, resp_type, sep = "_")
+    , pp = round(ifelse(p > 0.5, 1 - p, p), 3)
+    , stimulus = factor(pp, labels = unique(stimulus)[order(unique(pp))])
+  )
+
+ggplot(true_probability_quantiles, aes(x = p, y = rt, group = resp_type_quantile, color = stimulus)) +
+  geom_line(color = "grey70") +
+  geom_point(data = ebddm_probability_quantiles, aes(x = p, y = rt, group = resp_type_quantile, color = stimulus), shape = 5) +
+  geom_point()
+```
+
+
+
+```{r}
+ebddm_truth <- ebddm_pred(
+  param = c(w = 0.7, c = 2, alpha = 3, tau = 0.15, beta = 0.5)
+  , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+  , obs = as.matrix(similarities[, 1:2])
+  , n_trials = 1000
+)
+
+ebddm_truth$resp_type <- ifelse(
+  (ebddm_truth$resp == "upper" & similarities[ebddm_truth$stimulus, "category"] == 1) |
+  (ebddm_truth$resp == "lower" & similarities[ebddm_truth$stimulus, "category"] == 2)
+  , "correct", "error")
+
+ebddm_truth$rt <- ifelse(ebddm_truth$resp_type == "correct", ebddm_truth$q, -ebddm_truth$q)
+```
+
+
+# Parameter recovery for EB-RW
+
+```{r simulate_ebrw_data, results = "hide", cache = TRUE}
+ebrw_truth <- ebrw_sim(
+  param = c(w = 0.7, c = 2, K = 4, alpha = 0.242, k = 125.07, mu = 491.07)
+  , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+  , obs = as.matrix(similarities[, 1:2])
+  , n_trials = 1000
+)
+
+ebrw_truth$resp_type <- ifelse(
+  (ebrw_truth$response == 1 & similarities[ebrw_truth$stimulus, "category"] == 1) |
+  (ebrw_truth$response == 0 & similarities[ebrw_truth$stimulus, "category"] == 2)
+  , "correct", "error")
+```
+
+```{r fit_ebddm_to_ebrw_data, dependson = "simulate_ebrw_data", results = "hide", cache = TRUE}
+ebrw_truth$q <- ifelse(ebrw_truth$response == 1, ebrw_truth$rt, -ebrw_truth$rt) / 1000
+tests <- as.matrix(ebrw_truth[, paste0("xi", 1:2)])
+
+init_values <- list(
+  list(w = 0.5, c = 4, alpha = 5, tau = 0.2, beta = 0.3)
+  , list(w = 0.8, c = 2, alpha = 3, tau = 0.1, beta = 0.7)
+  , list(w = 0.2, c = 3, alpha = 8, tau = 0.25, beta = 0.5)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))))
+
+angle_data <- list(
+  rt = ebrw_truth$q
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)
+  , nmemory = dim(memory)
+  , p = 1 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+ebrw_angle_samples <- run.jags(
+  model = "ebddm_agg.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = angle_data
+  , n.chains = 3
+  , sample = 5e3
+  , burnin = 1e3
+  , thin = 1
+  , method = "rjparallel"
+)
+```
+
+```{r}
+knitr::kable(summary(ebrw_angle_samples))
+```
+
+
+```{r fit_ebddm_to_ebrw_data2, dependson = "simulate_ebrw_data", results = "hide", cache = TRUE}
+init_values <- list(
+  list(w = 0.5, c = 4, alpha = 5, tau = 0.2, beta = 0.3)
+  , list(w = 0.8, c = 2, alpha = 3, tau = 0.1, beta = 0.7)
+  , list(w = 0.2, c = 3, alpha = 8, tau = 0.25, beta = 0.5)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))))
+
+angle_data <- list(
+  rt = ebrw_truth$q
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)
+  , nmemory = dim(memory)
+  , p = 1 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+ebrw_angle_samples2 <- run.jags(
+  model = "ebddm_agg2.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = angle_data
+  , n.chains = 3
+  , sample = 5e3
+  , burnin = 1e3
+  , thin = 1
+  , method = "rjparallel"
+)
+```
+
+```{r}
+knitr::kable(summary(ebrw_angle_samples2))
+```
+
+
+```{r fit_ebddm_to_ebrw_data3, dependson = "simulate_ebrw_data", results = "hide", cache = TRUE}
+init_values <- list(
+  list(w = 0.5, c = 4, alpha = 5, tau = 0.2, beta = 0.3)
+  , list(w = 0.8, c = 2, alpha = 3, tau = 0.1, beta = 0.7)
+  , list(w = 0.2, c = 3, alpha = 8, tau = 0.25, beta = 0.5)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))))
+
+angle_data <- list(
+  rt = ebrw_truth$q
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)
+  , nmemory = dim(memory)
+  , p = 1 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+ebrw_angle_samples3 <- run.jags(
+  model = "ebddm_agg3.txt"
+  , monitor = poi
+  , inits = init_values
+  , data = angle_data
+  , n.chains = 3
+  , sample = 5e3
+  , burnin = 1e3
+  , thin = 1
+  , method = "rjparallel"
+)
+```
+
+```{r}
+knitr::kable(summary(ebrw_angle_samples3))
+```
+
+
+```{r posterior_predictive_checks_ebrw}
+posterior_predictive_distribution <- mclapply(ebrw_angle_samples$mcmc, function(x) {
+  apply(x, 1, function(y) {
+    ebddm_pred(
+      param = y
+      , mem = subset(similarities, angle != 0)[, c(1:2, 4)]
+      , obs = as.matrix(similarities[, 1:2])
+      , n_trials = 1
+    )
+  })
+})
+
+posterior_predictive_distribution <- lapply(posterior_predictive_distribution, function(x) do.call(rbind, x)) %>%
+  do.call(rbind, .)
+
+posterior_predictive_distribution$resp_type <- ifelse(
+  (posterior_predictive_distribution$resp == "upper" & similarities[posterior_predictive_distribution$stimulus, "category"] == 1) |
+  (posterior_predictive_distribution$resp == "lower" & similarities[posterior_predictive_distribution$stimulus, "category"] == 2)
+  , "correct", "error")
+
+posterior_predictive_distribution$q <- ifelse(
+  posterior_predictive_distribution$resp_type == "correct"
+  , posterior_predictive_distribution$q
+  , -posterior_predictive_distribution$q
+)
+```
+
+
+```{r plot_observed_vs_predicted_ebrw, fig.width = 12, fig.height = 9}
+ebrw_truth$q <- ifelse(ebrw_truth$resp_type == "correct", ebrw_truth$rt, -ebrw_truth$rt) / 1000
+
+ebrw_truth %>%
+  ggplot() +
+    geom_histogram(aes(fill = resp_type, x = q, y = ..density..), binwidth = 0.25, position = "identity") +
+    geom_histogram(data = posterior_predictive_distribution %>% group_by(resp_type, stimulus), aes(fill = resp_type, x = q, y = -..density..), binwidth = 0.25, position = "identity", alpha = 0.3) +
+    geom_hline(yintercept = 0, size = 0.25, color = grey(0.4)) +
+    facet_wrap(~ stimulus, scales = "free_y")
+```
+
+```{r}
+error_rates <- merge(
+  aggregate(q ~ stimulus, ebrw_truth, function(x) mean(x > 0))
+  , aggregate(q ~ stimulus, posterior_predictive_distribution, function(x) mean(x > 0))
+  , by = "stimulus"
+)
+error_rates$diff <- error_rates$q.x -  error_rates$q.y
+
+knitr::kable(error_rates)
+```
+
+```{r eval = FALSE}
+correct_rt <- merge(
+  aggregate(q ~ stimulus, ebrw_truth, function(x) median(x[x > 0]))
+  , aggregate(q ~ stimulus, posterior_predictive_distribution, function(x) median(x[x > 0]))
+  , by = "stimulus"
+)
+correct_rt$diff <- correct_rt$q.x -  correct_rt$q.y
+
+knitr::kable(correct_rt)
+```
+
+```{r eval = FALSE}
+error_rt <- merge(
+  aggregate(q ~ stimulus, ebrw_truth, function(x) median(x[x < 0]))
+  , aggregate(q ~ stimulus, posterior_predictive_distribution, function(x) median(x[x < 0]))
+  , by = "stimulus"
+)
+error_rt$diff <- error_rt$q.x -  error_rt$q.y
+
+knitr::kable(error_rt)
+```
