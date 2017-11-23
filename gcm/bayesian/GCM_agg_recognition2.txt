@@ -29,8 +29,9 @@ model {
   c ~ dunif(0, 10)
   k ~ dunif(0, 5)
 
-  for(i in 1:ndim) { # Nice but non-trivial autocorrelation
-    alpha[i] <- 1
+  for(i in 1:ndim) { # see http://andrewgelman.com/2009/04/29/conjugate_prior/ Much better than Dirichlet but slower
+    w_phi[i] ~ dnorm(0, 1)
+    exp_w_phi[i] <- exp(w_phi[i])
+    w[i] <- exp_w_phi[i] / sum(exp_w_phi)
   }
-  w ~ ddirch(alpha)
 }

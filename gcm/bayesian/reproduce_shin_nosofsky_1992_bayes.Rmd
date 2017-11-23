@@ -44,16 +44,16 @@ recognition_data <- list(
 )
 
 init_values <- list(
-  list(c = 4, w = c(0.5, 0.2, -0.1, 0.1, -0.2), k = 0.5)
-  , list(c = 2, w = c(0, 0, 0, 0, 0), k = 0.3)
-  , list(c = 3, w = c(0.25, 0.3, -0.3, -0.15, -0.05), k = 0.7)
+  list(c = 4, w_phi = c(-0.4, -2.2, -1, 1.3, -0.2, 1.1), k = 0.5)
+  , list(c = 2, w_phi = c(1.4, 1.9, -0.1, -0.7, 0.8, 1.9), k = 0.3)
+  , list(c = 3, w_phi = c(1, -0.4, -1.5, -0.6, 0.8, -1.8), k = 0.7)
 )
 
-poi <- c("c", "wj", "k", "pred_y")
+poi <- c("c", "w", "k", "pred_y")
 
 # Sample
 gcm_samples <- run.jags(
-  model = "GCM_agg_recognition.txt"
+  model = "GCM_agg_recognition2.txt"
   , monitor = poi
   , inits = init_values
   , data = recognition_data
@@ -68,7 +68,7 @@ gcm_samples <- run.jags(
 In Table 5 Shin & Nosofsky (1992) report the following estimates for the summary fits of the old-new recognition data in experiment 1: $w_1 = .006$, $w_2 = .084$, $w_3 = .102$, $w_4 = .392$, $w_5 = .218$, $c = 4.905$, $k = 0.280$
 
 ```{r echo = FALSE, results = "asis"}
-knitr::kable(summary(gcm_samples)[c("c", paste0("wj[", 1:6, "]"), "k"), ])
+knitr::kable(summary(gcm_samples)[c("c", paste0("w[", 1:6, "]"), "k"), ])
 ```
 
 The resulting fits closely resemble those reported in the paper.
