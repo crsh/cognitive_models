@@ -125,5 +125,5 @@ knitr::kable(cbind(
 
 
 # References
-Nosofsky, R. M., & Palmeri, T. J. (1997). An exemplar-based random walk model of speeded classification. *Psychological Review*, 104(2), 266–300. doi:[10.1037/0033-295X.104.2.266](http://doi.org/10.1037/0033-295X.104.2.266)
+Nosofsky, R. M., & Palmeri, T. J. (1997). An exemplar-based random walk model of speeded classification. *Psychological Review*, 104(2), 266–300. doi:[10.1037/0033-295X.104.2.266](https://doi.org/10.1037/0033-295X.104.2.266)
 

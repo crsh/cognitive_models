@@ -106,4 +106,4 @@ legend(
 <br />
 
 # References
-Nosofsky, R. M. (1989). Further tests of an exemplar-similarity approach to relating identification and categorization. *Perception & Psychophysics*, 45(4), 279–290. doi: [10.3758/BF03204942](http://dx.doi.org/10.3758/BF03204942)
+Nosofsky, R. M. (1989). Further tests of an exemplar-similarity approach to relating identification and categorization. *Perception & Psychophysics*, 45(4), 279–290. doi: [10.3758/BF03204942](https://doi.org/10.3758/BF03204942)

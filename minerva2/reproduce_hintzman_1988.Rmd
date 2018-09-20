@@ -95,4 +95,4 @@ box()
 <br />
 
 # References
-Hintzman, D. L. (1988). Judgments of frequency and recognition memory in a multiple-trace memory model. *Psychological Review*, 95(4), 528–551. doi:[10.1037/0033-295X.95.4.528](http://dx.doi.org/10.1037/0033-295X.95.4.528)
+Hintzman, D. L. (1988). Judgments of frequency and recognition memory in a multiple-trace memory model. *Psychological Review*, 95(4), 528–551. doi:[10.1037/0033-295X.95.4.528](https://doi.org/10.1037/0033-295X.95.4.528)
