@@ -158,4 +158,4 @@ for(i in 102:120) {
 <br />
 
 # References
-Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](http://dx.doi.org/10.3758/s13420-011-0046-2)
+Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](https://doi.org/10.3758/s13420-011-0046-2)

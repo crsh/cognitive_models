@@ -95,4 +95,4 @@ legend(
 <br />
 
 # References
-Shin, H. J., & Nosofsky, R. M. (1992). Similarity-scaling studies of dot-pattern classification and recognition. *Journal of Experimental Psychology: General*, 121(3), 278–304. doi:[10.1037/0096-3445.121.3.278](http://dx.doi.org/10.1037/0096-3445.121.3.278)
+Shin, H. J., & Nosofsky, R. M. (1992). Similarity-scaling studies of dot-pattern classification and recognition. *Journal of Experimental Psychology: General*, 121(3), 278–304. doi:[10.1037/0096-3445.121.3.278](https://doi.org/10.1037/0096-3445.121.3.278)
