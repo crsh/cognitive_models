@@ -5,21 +5,21 @@
 probe_memory <- function (probe, memory, cue_features) {
   if(is.null(memory)) { # Empty memory
     echo <- runif(length(probe), -0.001, 0.001) # First trial is noise (p. 65, Jamieson, Crump, & Hannah, 2012)
-    normalized_echo <- echo / max(echo) # Eq. 4, Jamieson, Crump, & Hannah (2012)
+    normalized_echo <- echo / max(abs(echo)) # Eq. 4, Jamieson, Crump, & Hannah (2012)
 
     return(normalized_echo)
   } else {
     # Compare only features associated with cues (p. 64, Jamieson, Crump, & Hannah, 2012)
     probe <- probe[cue_features]
-    relevant_memory <- matrix(memory[, cue_features], ncol = length(cue_features))
+    relevant_memory <- memory[, cue_features, drop = FALSE]
 
     # Calculate echo
-#     similarity <- colSums(probe * t(relevant_memory)) / (sqrt(sum(probe^2)) * sqrt(rowSums(relevant_memory^2))) # Eq. 7, Jamieson, Crump, & Hannah (2012)
+    # similarity <- colSums(probe * t(relevant_memory)) / (sqrt(sum(probe^2)) * sqrt(rowSums(relevant_memory^2))) # Eq. 7, Jamieson, Crump, & Hannah (2012)
     similarity <- colSums(probe * t(relevant_memory)) / (sqrt(sum(probe^2) * rowSums(relevant_memory^2))) # simplified Eq. 7, Jamieson, Crump, & Hannah (2012)
     activation <- similarity^3                          # Eq. 2, Jamieson, Crump, & Hannah (2012)
     echo <- colSums(activation * memory)                # Eq. 3, Jamieson, Crump, & Hannah (2012)
     echo <- echo + runif(length(echo), -0.001, 0.001)   # Add noise (p. 64, Jamieson, Crump, & Hannah, 2012)
-    normalized_echo <- echo / max(echo)                 # Eq. 4, Jamieson, Crump, & Hannah (2012)
+    normalized_echo <- echo / max(abs(echo))                 # Eq. 4, Jamieson, Crump, & Hannah (2012)
 
     return(normalized_echo)
   }
@@ -31,7 +31,7 @@ probe_memory <- function (probe, memory, cue_features) {
 
 expect_event <- function (outcome, normalized_echo) {
 #     expectancy <- sum(outcome * normalized_echo) / sum(outcome != 0) # Eq. 5, Jamieson, Crump, & Hannah (2010)
-  expectancy <- sum(outcome * normalized_echo) / sum(outcome != 0 & normalized_echo != 0)   # Eq. 4, Jamieson, Crump, & Hannah (2012)
+  expectancy <- sum(outcome * normalized_echo) / sum(outcome != 0 & normalized_echo != 0)   # Eq. 5, Jamieson, Crump, & Hannah (2012)
 
   expectancy
 }
