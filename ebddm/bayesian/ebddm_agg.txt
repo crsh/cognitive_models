@@ -1,0 +1,36 @@
+# Exemplar-based Drift-Diffusion Model
+
+model {
+  # Decision Data
+  for (i in 1:ntests[1]) {
+    rt[i] ~ dwiener(alpha, tau, beta, delta[i])
+    #pred_rt[i] ~ dwiener(alpha, tau, beta, delta[i])
+  }
+
+  # Decision Probabilities
+  for (i in 1:ntests[1]) {
+    delta[i] <- logit(r[i])
+    r[i] <- sum(numerator[i, ]) / sum(s[i, ])
+    for (j in 1:nmemory[1]) {
+      tmp[i, j, 1] <- s[i, j]
+      tmp[i, j, 2] <- 0
+      numerator[i, j] <- tmp[i, j, category[j]]
+    }
+  }
+
+  # Similarities
+  for (i in 1:ntests[1]) {
+    for (j in 1:nmemory[1]) {
+      s[i, j] <- exp(-c * (sum(wk * abs(tests[i, ] - memory[j, ])^rho)^(1/rho))^p)
+    }
+  }
+
+  wk[1:2] <- c(w, 1-w) # Requires JAGS 4.0.0
+
+  # Priors
+  c ~ dunif(0, 25)
+  w ~ dbeta(1, 1)
+  alpha ~ dunif(0, 25)
+  beta ~ dbeta(1, 1)
+  tau ~ dunif(0, 2)
+}

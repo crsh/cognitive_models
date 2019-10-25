@@ -1,0 +1,44 @@
+# Generalized Context Model for Recognition Memory with Individual Differences
+model {
+  # Decision Data
+  for(i in 1:n_subjects) {
+    for(j in 1:n_tests[1]) {
+      y[i] ~ dbin(r[i], n_trials[i])
+    }
+  }
+
+  # Decision Probabilities
+  for(i in 1:n_subjects) {
+    for(i in 1:n_tests[1]) {
+      f[i, j] <- sum(s[i, j, ]) + f_bg[i]
+      r[i, j] <- f[i, j] / (f[i, j] + k[i])
+    }
+  }
+
+  # Similarities
+  for(i in 1:n_subjects) {
+    for(j in 1:n_tests[1]) {
+      for(k in 1:n_memory[1]) {
+        s[i, j, k] <- exp(-c[i] * (sum(wj[i, ] * abs(tests[i, j, ] - memory[i, k, ])^rho)^(1/rho))^p)
+      }
+    }
+  }
+
+  # Priors
+  for(i in 1:n_subjects) {
+    for(j in 1:(n_dim - 1)) {
+      w[i, j] ~ dnorm(0, 1)
+    }
+    c[i]  ~ dunif(0, 25)
+    k[i] ~ dunif(0, 10)
+    f_bg[i] ~ dunif(0, 1)
+  }
+
+  # Rescale parameters
+  for(i in 1:n_subjects) {
+    for(j in 1:(n_dim - 1)) {
+      wj[i, j] <- phi(qnorm(1/n_dim, 0, 1) + w[i, j])
+    }
+    wj[i, n_dim] <- 1 - sum(wj[i, 1:(n_dim - 1)])
+  }
+}

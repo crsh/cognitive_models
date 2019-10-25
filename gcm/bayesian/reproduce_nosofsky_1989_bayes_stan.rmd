@@ -1,0 +1,176 @@
+---
+title: "Reproduction of model-based analyses by Nosofsky (1989)"
+author: "Frederik Aust"
+output:
+  knitrBootstrap::bootstrap_document:
+    highlight: xcode
+    theme: flatly
+    menu: false
+---
+
+To validate this implementation of the Bayesian Generalized Context Model (GCM), I reproduced small parts of the model-based analyses reported in Nosofsky (1989). The original MDS solutions and response data were provided by Robert Nosofsky (s. [note on data](../data/README.html)).
+
+```{r echo = FALSE, message = FALSE}
+library("rstan")
+library("vioplot")
+```
+
+```{r}
+similarities <- read.csv2("../data/nosofsky_1989_similarities.csv")[, -1]
+similarities$size <- c(0, 1, 0, 0, 1, 0, 1, 1, 0, 0, 2, 2, 0, 2, 0, 0)
+similarities$angle <- c(0, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 2, 0, 0, 2, 0)
+  
+data <- read.csv2("../data/nosofsky_1989_responses.csv")[, -1]
+data$n_size <- rowSums(data[, 1:2])
+data$n_angle <- rowSums(data[, 3:4])
+```
+
+<br />
+
+# Unconstrained GCM fits for the size condition
+The original parameter estimates reported in Table 5 by Nosofsky (1989) are $w_1 = .10$, $c = 1.60$, and $b_1 = .50$.
+
+```{r message = FALSE, results = "hide"}
+tests <- as.matrix(similarities[, 1:2])
+memory <- as.matrix(subset(similarities, size != 0)[, 1:2])
+size_data <- list(
+  y = data$Cat.1.s
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)[1]
+  , nmemory = dim(memory)[1]
+  , ndim = dim(tests)[2]
+  , ntrials = data$n_size
+  , p = 2 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, size != 0)[, 3])
+)
+
+init_values <- list(
+  list(c = 4, w = 0.5, b = 0.5)
+  , list(c = 2, w = 0.8, b = 0.3)
+  , list(c = 3, w = 0.2, b = 0.7)
+)
+
+poi <- c(unique(unlist(lapply(init_values, names))), "pred_y")
+
+# Sample
+size_samples <- stan(
+  file = "GCM_agg.stan"
+  , pars = poi
+  , init = init_values
+  , data = size_data
+  , chains = 3
+  , iter = 5e4
+  , thin = 2
+  , cores = 3
+  , control = list(adapt_delta = 0.9)
+)
+```
+
+```{r echo = FALSE, results = "asis"}
+knitr::kable(summary(size_samples)$summary[c("c", "w", "b"), ])
+```
+
+
+<br />
+
+# Unconstrained GCM fits for the angle condition
+The original parameter estimates reported in Table 5 by Nosofsky (1989) are $w_1 = .98$, $c = 3.20$, and $b_1 = .43$.
+
+```{r message = FALSE, results = "hide"}
+memory <- as.matrix(subset(similarities, angle != 0)[, 1:2])
+angle_data <- list(
+  y = data$Cat.1.a
+  , tests = tests
+  , memory = memory
+  , ntests = dim(tests)[1]
+  , nmemory = dim(memory)[1]
+  , ndim = dim(tests)[2]
+  , ntrials = data$n_angle
+  , p = 2 # Shape of relationship between similarity and psychological distance
+  , rho = 2 # Power of the Minkowski distance
+  , category = unlist(subset(similarities, angle != 0)[, 4])
+)
+
+# Sample
+angle_samples <- stan(
+  file = "GCM_agg.stan"
+  , pars = poi
+  , init = init_values
+  , data = angle_data
+  , chains = 3
+  , iter = 5e4
+  , thin = 2
+  , cores = 3
+  , control = list(adapt_delta = 0.9)
+)
+```
+
+```{r echo = FALSE, results = "asis"}
+knitr::kable(summary(angle_samples)$summary[c("c", "w", "b"), ])
+```
+
+<br />
+
+# Predictions
+The resulting fits allow for a close partial reproduction of Nosofsky's Figure 6 (1989) plotting observed against predicted proportions of category 1 responses for each stimulus.
+
+```{r echo = FALSE, warning = FALSE}
+par(pty = "s")
+plot(NA, NA
+  , xlim = c(0, 1)
+  , ylim = c(0, 1)
+  , xlab = "Observed probability"
+  , ylab = "Predicted probability"
+  , pch = 17
+  , asp = 1
+  , las = 1
+)
+
+all_size_samples <- rstan::extract(size_samples, "pred_y")$pred_y
+
+for(i in 1:nrow(tests)) {
+  vioplot(
+    all_size_samples[, i] / data$n_size[i]
+    , at = (data$Cat.1.s  / data$n_size)[i]
+    , col = scales::alpha(grey(0.7), 0.35)
+    , border = FALSE
+    , rectCol = grey(0.5)
+    , colMed = "black"
+    , pchMed = 17
+    , add = TRUE
+    , wex = 0.15
+  )
+}
+
+all_angle_samples <- rstan::extract(angle_samples, "pred_y")$pred_y
+
+for(i in 1:nrow(tests)) {
+  vioplot(
+    all_angle_samples[, i] / data$n_angle[i]
+    , at = (data$Cat.1.a  / data$n_angle)[i]
+    , col = scales::alpha(grey(0.7), 0.35)
+    , border = FALSE
+    , rectCol = grey(0.5)
+    , colMed = "black"
+    , pchMed = 0
+    , add = TRUE
+    , wex = 0.15
+  )
+}
+
+abline(0, 1)
+legend(
+  "topleft"
+  , legend = c("Size", "Angle")
+  , pch = c(17, 0)
+  , inset = 0.1
+  , bty = "n"
+)
+```
+
+<br />
+
+# References
+Nosofsky, R. M. (1989). Further tests of an exemplar-similarity approach to relating identification and categorization. *Perception & Psychophysics*, 45(4), 279–290. doi: [10.3758/BF03204942](http://dx.doi.org/10.3758/BF03204942)
