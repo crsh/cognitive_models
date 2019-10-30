@@ -5,21 +5,32 @@ date: "13.1.2015"
 output:
   html_document:
     theme: spacelab
+    code_folding: show
     toc: yes
+    toc_float: yes
 ---
 
 To validate this implementation of Minerva-AL, I reproduced a simulation study reported in Jamieson, Crump & Hannah (2012).
 
 ```{r echo = FALSE}
+library("dplyr")
+library("tidyr")
+
+# Run fortran simulation
+if(.Platform$OS.type == "unix") {
+  system("cd reference_implementation; sh make.sh")
+}
+
 source("minerva-al.R")
 ```
 
 <br />
 
 # Simulation of acquisition and extinction (Section 1)
+
 I created cue, outcome and context vectors and defined the number of trials and replications according to the specifications in the paper.
 
-```{r setup_events}
+```{r setup-events}
 n_features <- 120
 cue_features <- 1:100
 a <- context <- outcome <- rep(0, n_features)
@@ -32,18 +43,18 @@ acquisition_event <- a + context + outcome
 extinction_event <- probe <- a + context
 ```
 
-```{r setup_simulation}
+```{r setup-simulation}
 n_replications <- 25
 n_trials <- 200
 
-p_encode <- c(0.33, 0.67, 1)
+p_encode <- c(1/3, 2/3, 1)
 ```
 
-```{r execute_simulation}
+```{r simulate-acquisition}
 sim_results <- matrix(0, ncol = n_trials, nrow = length(p_encode))
 
 for (r in 1:n_replications) {
-  for(i in 1:3) {
+  for (i in 1:3) {
     # Memory is empty on first trial
     normalized_echo <- probe_memory(probe, NULL, cue_features)
     expectancy <- expect_event(outcome, normalized_echo)
@@ -88,33 +99,113 @@ sim_results <- sim_results / n_replications # Mean of replications
 <br />
 
 ## Results
+
 The resulting expectancies correspond nicely to those reported by Jamieson, Hannah & Crump (2012) in Figure 1.
 
-```{r plot_results, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
+```{r plot-acquisition, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
 plot(
-  1:n_trials, sim_results[1, ]
+  1:200
+  , rep(NA, 200)
   , ylim = c(0, 1)
-  , type = "l"
   , lwd = 2.5
   , xlab = "Trial"
   , ylab = "Retrieval of X given A"
   , las = 1
 )
-points(1:n_trials, sim_results[1, ], pch = 17, cex = 1.25, col = "white")
-points(1:n_trials, sim_results[1, ], pch = 2, cex = 1.25)
 
-lines(1:n_trials, sim_results[2, ], lwd = 2.5)
-points(1:n_trials, sim_results[2, ], pch = 15, cex = 1.25, col = "white")
-points(1:n_trials, sim_results[2, ], pch = 0, cex = 1.25)
+matlines(
+  t(sim_results)
+  , lwd = 2.5
+  , col = "black"
+  , lty = 1
+)
 
-lines(1:n_trials, sim_results[3, ], lwd = 2.5)
-points(1:n_trials, sim_results[3, ], pch = 16, cex = 1.25, col = "white")
-points(1:n_trials, sim_results[3, ], cex = 1.25)
+matpoints(
+  t(sim_results)
+  , pch = c(24, 22, 21)
+  , bg = "white"
+  , col = "black"
+  , cex = 1.25
+)
+```
+
+As a comparison, the following plot shows the results from the reference implementation I received from Randall Jamieson (thanks!).
+
+```{r}
+acquisition_files <- list.files(path = "reference_implementation/results", pattern = "Acquisition", full.names = TRUE)
+
+acquisition_extinction <- lapply(
+  acquisition_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(acquisition_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2)) %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r plot-acquisition2, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
+plot(
+  1:200
+  , rep(NA, 200)
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+matlines(
+  t(as.matrix(acquisition_extinction[, -1]))
+  , lwd = 2.5
+  , col = "black"
+  , lty = 1
+)
+
+matpoints(
+  t(as.matrix(acquisition_extinction[, -1]))
+  , pch = c(24, 22, 21)
+  , bg = "white"
+  , col = "black"
+  , cex = 1.25
+)
+```
+
+```{r}
+prediction_differences <- sim_results - as.matrix(acquisition_extinction[, -1])
+
+plot(
+  1:200
+  , rep(NA, 200)
+  , ylim = c(-0.2, 0.2)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Absolut difference"
+  , las = 1
+)
+
+matlines(
+  t(prediction_differences)
+  , col = "black"
+  , lty = c(1, 3, 5)
+)
+
+legend("topright", inset = 0.05, legend = unlist(acquisition_extinction[, 1]), lty = c(1, 3, 5))
+
+summary(as.vector(prediction_differences))
 ```
 
 Additionally, the following plots visualize the information encoded for cue and outcome features across acquisition and extinction trials. The data are taken from one of the `r n_replications` simulations with encoding probability $L = 1$.
 
-```{r plot_encoding, echo = FALSE}
+```{r plot-encoding, echo = FALSE}
 plot(
   1:200
   , memory[, 1]
@@ -155,7 +246,263 @@ for(i in 102:120) {
 }
 ```
 
+
+# Simulation of reacquisition (Section 1)
+
+```{r}
+b <- rep(0, n_features)
+
+b[21:40] <- 1
+control_event <- b + context + outcome
+control_probe <- b + context
+```
+
+```{r}
+n_replications <- 25
+n_trials <- 200
+```
+
+
+```{r simulate-reacquisition}
+reacquisition_sim_results <- control_sim_results <- matrix(NA, ncol = n_trials, nrow = length(p_encode) * n_replications)
+
+for (i in 1:length(p_encode)) {
+  for (r in 1:n_replications) {
+    # Memory is empty on first trial
+    normalized_echo <- probe_memory(probe, NULL, cue_features)
+    expectancy <- expect_event(outcome, normalized_echo)
+    memory <- learn(
+      normalized_echo
+      , acquisition_event
+      , p_encode[i]
+      , NULL
+    )
+    
+    # Acquisition trials
+    for(j in 2:50) {
+      normalized_echo <- probe_memory(probe, memory, cue_features)
+      expectancy <- c(expectancy, expect_event(outcome, normalized_echo))
+      memory <- learn(
+        normalized_echo
+        , acquisition_event
+        , p_encode[i]
+        , memory
+      )
+    }
+    
+    # Extinction trials
+    for(j in 51:100) {
+      normalized_echo <- probe_memory(probe, memory, cue_features)
+      expectancy <- c(expectancy, expect_event(outcome, normalized_echo))
+      memory <- learn(
+        normalized_echo
+        , extinction_event
+        , p_encode[i]
+        , memory
+      )
+    }
+    
+    # Reacquisition trials
+    reacquisition_memory <- memory
+    reacquisition_expectancy <- expectancy
+    
+    for(j in 101:200) {
+      normalized_echo <- probe_memory(probe, reacquisition_memory, cue_features)
+      reacquisition_expectancy <- c(reacquisition_expectancy, expect_event(outcome, normalized_echo))
+      reacquisition_memory <- learn(
+        normalized_echo
+        , acquisition_event
+        , p_encode[i]
+        , reacquisition_memory
+      )
+    }
+    
+    # Control trials
+    control_memory <- memory
+    control_expectancy <- expectancy
+    
+    for(j in 101:200) {
+      normalized_echo <- probe_memory(control_probe, control_memory, cue_features)
+      control_expectancy <- c(control_expectancy, expect_event(outcome, normalized_echo))
+      control_memory <- learn(
+        normalized_echo
+        , control_event
+        , p_encode[i]
+        , control_memory
+      )
+    }
+    
+    reacquisition_sim_results[(i-1)*n_replications + r, ] <- reacquisition_expectancy
+    control_sim_results[(i-1)*n_replications + r, ] <- control_expectancy
+  }
+}
+```
+
+## Results
+
+```{r fig.height = 5.5, fig.width = 9.5, echo = FALSE}
+plot(
+  51:200
+  , rep(0, 150)
+  , pch = NA
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given cue"
+  , las = 1
+  , 
+)
+
+abline(h = 0.95, col = "grey")
+
+for(i in 1:length(p_encode)) {
+  lines(51:200, colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 51:200]), lwd = 2)
+  lines(51:200, colMeans(control_sim_results[(1:n_replications) + (i-1)*n_replications, 51:200]), lty = "dashed")
+}
+
+
+mean_se <- function(x) paste0(round(mean(x), 2), " (", round(sd(x) / sqrt(length(x)), 2), ")")
+
+reacquisition_results <- matrix(NA, ncol = 3, nrow = 2)
+
+for(i in 1:length(p_encode)) {
+  reacquisition_results[, i] <- c(
+    mean_se(apply(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 101:200], 1, function(x) min(which(x >= 0.95))))
+    , mean_se(apply(control_sim_results[(1:n_replications) + (i-1)*n_replications, 101:200], 1, function(x) min(which(x >= 0.95))))
+  )
+}
+
+knitr::kable(cbind(Condition = c("Reacquisition", "Control"), reacquisition_results), col.names = c("Condtion", round(p_encode, 2)))
+```
+
+As a comparison, the following plot shows the results from the reference implementation I received from Randall Jamieson (thanks!).
+
+```{r}
+reacquisition_files <- list.files(path = "reference_implementation/results", pattern = "Reacquisition\\_\\d+", full.names = TRUE)
+
+reacquisition <- lapply(
+  reacquisition_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(reacquisition_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2))
+
+mean_reacquisition <- reacquisition %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r}
+reacquisition_control_files <- list.files(path = "reference_implementation/results", pattern = "Reacquisition\\_\\D+", full.names = TRUE)
+
+reacquisition_control <- lapply(
+  reacquisition_control_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(reacquisition_control_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2))
+  
+mean_reacquisition_control <- reacquisition_control %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r plot-reacquisition, fig.height = 5.5, fig.width = 7.5, echo = FALSE}
+plot(
+  51:150
+  , rep(NA, 100)
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+abline(h = 0.95, col = "grey")
+
+matlines(
+  t(as.matrix(mean_reacquisition[, -1]))
+  , col = "black"
+  , lty = 1
+  , lwd = 2
+)
+
+matlines(
+  t(as.matrix(mean_reacquisition_control[, -1]))
+  , col = "black"
+  , lty = 2
+)
+```
+
+```{r}
+reacquisition_results <- matrix(NA, ncol = 3, nrow = 2)
+
+trails_to_master <- function(x) data.frame(n_trials = min(which(x >= 0.95)))
+
+reacquisition_trial_counts <- reacquisition %>%
+  group_by(L, V2) %>% 
+  do(trails_to_master(.[, 101:ncol(reacquisition)])) %>% 
+  group_by(L) %>% 
+  summarize(n_trials = mean_se(n_trials))
+
+reacquisition_control_trial_counts <- reacquisition_control %>%
+  group_by(L, V2) %>% 
+  do(trails_to_master(.[, 101:ncol(reacquisition_control)])) %>% 
+  group_by(L) %>% 
+  summarize(n_trials = mean_se(n_trials))
+
+knitr::kable(
+  bind_rows(Reacquition = reacquisition_trial_counts, Control = reacquisition_control_trial_counts, .id = "Condition") %>%
+    spread(L, n_trials) %>% 
+    arrange(desc(Condition))
+)
+```
+
+The following plot compares initial and reacquisition.
+
+```{r}
+plot(
+  1:50
+  , rep(0, 50)
+  , pch = NA
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+abline(h = 0.95, col = "grey")
+
+for(i in 1:length(p_encode)) {
+  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 1:50]), lwd = 2)
+}
+
+for(i in 1:length(p_encode)) {
+  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 101:150]), lty = 2)
+}
+```
+
+
+
 <br />
 
 # References
+
 Jamieson, R. K., Crump, M. J. C., & Hannah, S. D. (2012). An instance theory of associative learning. *Learning & Behavior*, 40(1), 61–82. doi:[10.3758/s13420-011-0046-2](http://dx.doi.org/10.3758/s13420-011-0046-2)
