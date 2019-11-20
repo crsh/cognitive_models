@@ -44,7 +44,7 @@ extinction_event <- probe <- a + context
 ```
 
 ```{r setup-simulation}
-n_replications <- 25
+n_replications <- 100
 n_trials <- 200
 
 p_encode <- c(1/3, 2/3, 1)
@@ -258,7 +258,7 @@ control_probe <- b + context
 ```
 
 ```{r}
-n_replications <- 25
+n_replications <- 100
 n_trials <- 200
 ```
 
@@ -425,8 +425,8 @@ mean_reacquisition_control <- reacquisition_control %>%
 
 ```{r plot-reacquisition, fig.height = 5.5, fig.width = 7.5, echo = FALSE}
 plot(
-  51:150
-  , rep(NA, 100)
+  1:150
+  , rep(NA, 150)
   , ylim = c(0, 1)
   , lwd = 2.5
   , xlab = "Trial"
@@ -437,14 +437,14 @@ plot(
 abline(h = 0.95, col = "grey")
 
 matlines(
-  t(as.matrix(mean_reacquisition[, -1]))
+  cbind(51:200, t(as.matrix(mean_reacquisition[, 52:201])))
   , col = "black"
   , lty = 1
   , lwd = 2
 )
 
 matlines(
-  t(as.matrix(mean_reacquisition_control[, -1]))
+  cbind(51:200, t(as.matrix(mean_reacquisition_control[, 52:201])))
   , col = "black"
   , lty = 2
 )
@@ -457,13 +457,13 @@ trails_to_master <- function(x) data.frame(n_trials = min(which(x >= 0.95)))
 
 reacquisition_trial_counts <- reacquisition %>%
   group_by(L, V2) %>% 
-  do(trails_to_master(.[, 101:ncol(reacquisition)])) %>% 
+  do(trails_to_master(.[, 104:ncol(reacquisition)])) %>% 
   group_by(L) %>% 
   summarize(n_trials = mean_se(n_trials))
 
 reacquisition_control_trial_counts <- reacquisition_control %>%
   group_by(L, V2) %>% 
-  do(trails_to_master(.[, 101:ncol(reacquisition_control)])) %>% 
+  do(trails_to_master(.[, 104:ncol(reacquisition_control)])) %>% 
   group_by(L) %>% 
   summarize(n_trials = mean_se(n_trials))
 
@@ -491,14 +491,42 @@ plot(
 abline(h = 0.95, col = "grey")
 
 for(i in 1:length(p_encode)) {
-  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 1:50]), lwd = 2)
+  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 1:50]), lty = 2)
 }
 
 for(i in 1:length(p_encode)) {
-  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 101:150]), lty = 2)
+  lines(colMeans(reacquisition_sim_results[(1:n_replications) + (i-1)*n_replications, 101:150]), lwd = 2)
 }
 ```
 
+And the same for the reference implementation.
+
+```{r}
+plot(
+  1:50
+  , rep(NA, 50)
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+abline(h = 0.95, col = "grey")
+
+matlines(
+  cbind(1:50, t(as.matrix(mean_reacquisition[, 102:151])))
+  , col = "black"
+  , lty = 1
+  , lwd = 2
+)
+
+matlines(
+  cbind(1:50, t(as.matrix(mean_reacquisition[, 2:51])))
+  , col = "black"
+  , lty = 2
+)
+```
 
 
 <br />

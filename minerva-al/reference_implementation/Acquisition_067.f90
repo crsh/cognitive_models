@@ -10,7 +10,7 @@ implicit none
 								N_field = 20,							&
 								N_features = N_cues*N_field,			&
 								N_trials = 100,							&
-								N_subjects = 25,						&								
+								N_subjects = 100,						&								
 								N_phases = 2
  
 	real, parameter			::	L = 2.0/3.0

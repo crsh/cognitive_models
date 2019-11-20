@@ -10,8 +10,8 @@ implicit none
 								N_field = 20,							&
 								N_features = N_cues*N_field,			&
 								N_trials = 50,							&
-								N_subjects = 25,						&								
-								N_phases = 3
+								N_subjects = 100,						&								
+								N_phases = 5
  
 	real, parameter			::	L = 0.67
 
@@ -49,6 +49,8 @@ implicit none
 			if (j == 1) Probe(:) = Cue_matrix(:, 1) + Cue_matrix(:, 9) + Cue_matrix(:, 10) 	! Acquisition
 			if (j == 2) Probe(:) = Cue_matrix(:, 1) + Cue_matrix(:, 9)						! Extinction
 			if (j == 3) Probe(:) = Cue_matrix(:, 2) + Cue_matrix(:, 9) + Cue_matrix(:, 10)  ! Reacquisition
+			if (j == 4) Probe(:) = Cue_matrix(:, 2) + Cue_matrix(:, 9) + Cue_matrix(:, 10)  ! Reacquisition
+			if (j == 5) Probe(:) = Cue_matrix(:, 2) + Cue_matrix(:, 9) + Cue_matrix(:, 10)  ! Reacquisition
 				
 			!---------------------------------------------------	
 			! Get the echo for the probe with 0.001 noise added
