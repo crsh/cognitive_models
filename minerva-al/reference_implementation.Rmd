@@ -1,0 +1,165 @@
+---
+title             : "Analysis of reference implementation results"
+author            : "Frederik Aust"
+date              : "`r format(Sys.time(), '%d %B, %Y')`"
+
+output:
+  html_document:
+    theme         : "spacelab"
+    df_print      : "kable"
+    code_folding  : "show"
+    toc           : true
+    toc_float     : true
+---
+
+```{r init, include = FALSE}
+library("dplyr")
+```
+
+# Acquisition and extinction
+
+```{r}
+acquisition_files <- list.files(path = "reference_implementation/results", pattern = "Acquisition", full.names = TRUE)
+
+acquisition_extinction <- lapply(
+  acquisition_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(acquisition_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2)) %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r plot-acquisition, fig.height = 5.5, fig.width = 9.5, echo = FALSE}
+plot(
+  1:200
+  , rep(NA, 200)
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+matlines(
+  t(as.matrix(acquisition_extinction[, -1]))
+  , lwd = 2.5
+  , col = "black"
+  , lty = 1
+)
+
+matpoints(
+  t(as.matrix(acquisition_extinction[, -1]))
+  , pch = c(21, 22, 24)
+  , bg = "white"
+  , col = "black"
+  , cex = 1.25
+)
+```
+
+
+# Reacquisition
+
+```{r}
+reacquisition_files <- list.files(path = "reference_implementation/results", pattern = "Reacquisition\\_\\d+", full.names = TRUE)
+
+reacquisition <- lapply(
+  reacquisition_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(reacquisition_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2))
+
+mean_reacquisition <- reacquisition %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r}
+reacquisition_control_files <- list.files(path = "reference_implementation/results", pattern = "Reacquisition\\_\\D+", full.names = TRUE)
+
+reacquisition_control <- lapply(
+  reacquisition_control_files
+  , read.delim
+  , skip = 3
+  , nrows = 24
+  , sep = ""
+  , header = FALSE
+) %>% 
+  setNames(
+    nm = stringr::str_extract(basename(reacquisition_control_files), "\\d+") %>%
+      gsub("0", "0.", .)
+  ) %>% 
+  bind_rows(.id = "L") %>% 
+  mutate(V2 = as.factor(V2))
+  
+mean_reacquisition_control <- reacquisition_control %>% 
+  group_by(L) %>% 
+  summarise_if(is.numeric, mean)
+```
+
+```{r plot-reacquisition, fig.height = 5.5, fig.width = 7.5, echo = FALSE}
+plot(
+  1:150
+  , rep(NA, 150)
+  , ylim = c(0, 1)
+  , lwd = 2.5
+  , xlab = "Trial"
+  , ylab = "Retrieval of X given A"
+  , las = 1
+)
+
+abline(h = 0.95, col = "grey")
+
+matlines(
+  t(as.matrix(mean_reacquisition[, -1]))
+  , col = "black"
+  , lty = 1
+)
+
+matlines(
+  t(as.matrix(mean_reacquisition_control[, -1]))
+  , col = "black"
+  , lty = 2
+)
+```
+
+```{r}
+mean_se <- function(x) paste0(round(mean(x), 2), " (", round(sd(x) / sqrt(length(x)), 2), ")")
+
+reacquisition_results <- matrix(NA, ncol = 3, nrow = 2)
+
+trails_to_master <- function(x) data.frame(n_trials = min(which(x >= 0.95)))
+
+reacquisition_trial_counts <- reacquisition %>%
+  group_by(L, V2) %>% 
+  do(trails_to_master(.[, 101:ncol(reacquisition)])) %>% 
+  group_by(L) %>% 
+  summarize(n_trials = mean_se(n_trials))
+
+reacquisition_control_trial_counts <- reacquisition_control %>%
+  group_by(L, V2) %>% 
+  do(trails_to_master(.[, 101:ncol(reacquisition_control)])) %>% 
+  group_by(L) %>% 
+  summarize(n_trials = mean_se(n_trials))
+
+knitr::kable(bind_rows(Reacquition = reacquisition_trial_counts, Control = reacquisition_control_trial_counts, .id = "Condition"))
+```
+
